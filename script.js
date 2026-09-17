@@ -282,14 +282,12 @@ window.addEventListener('load', () => {
 
     function applyTopFade() {
         clearTimeout(fadeRestoreTimer);
-        chatMsgs.classList.remove('scrolled-history');
-        if (chatTopFade) chatTopFade.classList.remove('fade-hidden');
+        sidebar.classList.remove('scrolled-history');
     }
 
     function removeTopFade() {
         clearTimeout(fadeRestoreTimer);
-        chatMsgs.classList.add('scrolled-history');
-        if (chatTopFade) chatTopFade.classList.add('fade-hidden');
+        sidebar.classList.add('scrolled-history');
     }
 
     function toggleSidebar(open) {
