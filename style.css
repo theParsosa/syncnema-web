@@ -323,12 +323,14 @@ body {
         width: 0.875rem !important;
         height: 0.875rem !important;
     }
-    .absolute.top-20.right-4 {
+    .absolute.top-20.right-4,
+    #right-floating-controls {
         top: 2.5rem !important;
         right: 0.35rem !important;
         gap: 0.3rem !important;
     }
-    .absolute.left-4.top-20 {
+    .absolute.left-4.top-20,
+    #left-floating-controls {
         top: 2.5rem !important;
         left: 0.35rem !important;
     }
@@ -338,11 +340,11 @@ body {
         right: 2.35rem !important;
         left: auto !important;
         top: auto !important;
-        bottom: 3.25rem !important;
-        width: 230px !important;
+        bottom: 4.5rem !important;
+        width: 235px !important;
         max-width: calc(100vw - 2.85rem) !important;
-        height: 200px !important;
-        max-height: 35vh !important;
+        height: 275px !important;
+        max-height: min(65vh, calc(100vh - 5.5rem)) !important;
         border-radius: 0.875rem !important;
         mask-image: linear-gradient(to bottom, transparent 0px, black 16px, black 100%) !important;
         -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 16px, black 100%) !important;
@@ -413,22 +415,56 @@ body {
     }
 }
 
-:fullscreen #chat-sidebar {
+/* Floating controls smooth transition */
+#left-floating-controls,
+#right-floating-controls {
+    transition: top 0.3s cubic-bezier(0.16, 1, 0.3, 1), right 0.3s ease, left 0.3s ease;
+}
+
+/* Fullscreen stick-to-top controls */
+:fullscreen #right-floating-controls,
+.is-fullscreen #right-floating-controls {
+    top: 1.25rem !important;
+    right: 1.25rem !important;
+}
+
+:fullscreen #left-floating-controls,
+.is-fullscreen #left-floating-controls {
+    top: 1.25rem !important;
+    left: 1.25rem !important;
+}
+
+:fullscreen #chat-sidebar,
+.is-fullscreen #chat-sidebar {
     position: absolute;
     right: 4.75rem;
     top: 4.75rem;
     bottom: 5.5rem;
     z-index: 60;
 }
+
 @media (max-width: 768px), (max-height: 500px) {
-    :fullscreen #chat-sidebar {
+    :fullscreen #right-floating-controls,
+    .is-fullscreen #right-floating-controls {
+        top: 0.4rem !important;
+        right: 0.4rem !important;
+    }
+
+    :fullscreen #left-floating-controls,
+    .is-fullscreen #left-floating-controls {
+        top: 0.4rem !important;
+        left: 0.4rem !important;
+    }
+
+    :fullscreen #chat-sidebar,
+    .is-fullscreen #chat-sidebar {
         right: 2.35rem !important;
-        bottom: 3.25rem !important;
+        bottom: 4.5rem !important;
         top: auto !important;
-        width: 230px !important;
+        width: 235px !important;
         max-width: calc(100vw - 2.85rem) !important;
-        height: 200px !important;
-        max-height: 35vh !important;
+        height: 275px !important;
+        max-height: min(65vh, calc(100vh - 5.5rem)) !important;
     }
 }
 

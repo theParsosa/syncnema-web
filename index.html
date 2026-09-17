@@ -16,7 +16,7 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>">
 
-    <link rel="stylesheet" href="style.css?v=3.2">
+    <link rel="stylesheet" href="style.css?v=3.3">
 </head>
 
 <body class="bg-[#060911] text-slate-100 h-screen flex flex-col overflow-hidden relative selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -381,7 +381,7 @@
             </div>
 
             <!-- Floating Reaction Controls (Left) -->
-            <div class="absolute left-4 top-20 z-30 flex flex-col items-start gap-2 pointer-events-auto">
+            <div id="left-floating-controls" class="absolute left-4 top-20 z-30 flex flex-col items-start gap-2 pointer-events-auto">
                 <button id="reaction-toggle-btn"
                     class="glass-island text-amber-300 w-10 h-10 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                     title="ارسال واکنش به تصویر">
@@ -400,7 +400,7 @@
             </div>
 
             <!-- Floating Sidebar & Fullscreen Toggles (Right) -->
-            <div class="absolute top-20 right-4 flex flex-col gap-2.5 z-30 pointer-events-auto">
+            <div id="right-floating-controls" class="absolute top-20 right-4 flex flex-col gap-2.5 z-30 pointer-events-auto">
                 <button id="toggle-chat-btn"
                     class="glass-island text-white w-10 h-10 rounded-full shadow-xl flex items-center justify-center transition-all relative hover:scale-110 active:scale-95"
                     title="چت زنده">
@@ -455,7 +455,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
     <script src="https://www.youtube.com/iframe_api" defer></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
-    <script src="script.js?v=3.2" defer></script>
+    <script src="script.js?v=3.3" defer></script>
 </body>
 
 </html>

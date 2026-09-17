@@ -356,19 +356,36 @@ window.addEventListener('load', () => {
     };
 
     customFsBtn.onclick = () => {
-        if (!document.fullscreenElement) {
-            cinemaContainer.requestFullscreen().catch(err => showToast('⚠️ ' + err.message, false));
-        } else document.exitFullscreen();
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!isFs) {
+            if (cinemaContainer.requestFullscreen) {
+                cinemaContainer.requestFullscreen().catch(err => showToast('⚠️ ' + err.message, false));
+            } else if (cinemaContainer.webkitRequestFullscreen) {
+                cinemaContainer.webkitRequestFullscreen();
+            } else if (videoPlayer.webkitEnterFullscreen) {
+                videoPlayer.webkitEnterFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
     };
-    document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement) {
+
+    const updateFullscreenState = () => {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        cinemaContainer.classList.toggle('is-fullscreen', isFs);
+        if (isFs) {
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'خروج از تمام صفحه';
         } else {
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'تمام صفحه';
         }
-    });
+    };
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(evt => document.addEventListener(evt, updateFullscreenState));
 
     // SECURITY & CINEJOY GLASS: Render toasts with SVG badges
     function showToast(text, isMe) {
