@@ -291,13 +291,13 @@ window.addEventListener('load', () => {
     function updateSyncUI(auto) {
         isAutoSync = auto;
         if (isAutoSync) {
-            syncToggleBtn.innerHTML = `<span>🔗</span> <span class="hidden sm:inline">سینک روشن</span>`;
-            syncToggleBtn.classList.remove('text-gray-400');
-            syncToggleBtn.classList.add('text-green-400');
+            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> <span class="hidden md:inline">سینک روشن</span>`;
+            syncToggleBtn.classList.remove('opacity-60');
+            syncToggleBtn.classList.add('glass-btn-green');
         } else {
-            syncToggleBtn.innerHTML = `<span>🔓</span> <span class="hidden sm:inline">سینک آزاد</span>`;
-            syncToggleBtn.classList.remove('text-green-400');
-            syncToggleBtn.classList.add('text-gray-400');
+            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg> <span class="hidden md:inline">سینک آزاد</span>`;
+            syncToggleBtn.classList.remove('glass-btn-green');
+            syncToggleBtn.classList.add('opacity-60');
         }
     }
     updateSyncUI(true);
@@ -319,18 +319,67 @@ window.addEventListener('load', () => {
     };
     document.addEventListener('fullscreenchange', () => {
         if (document.fullscreenElement) {
-            customFsBtn.innerHTML = '⤓'; customFsBtn.title = 'خروج';
+            customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
+            customFsBtn.title = 'خروج از تمام صفحه';
         } else {
-            customFsBtn.innerHTML = '⛶'; customFsBtn.title = 'تمام صفحه';
+            customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
+            customFsBtn.title = 'تمام صفحه';
         }
     });
 
-    // SECURITY FIX: User textContent instead of innerHTML where possible
+    // SECURITY & CINEJOY GLASS: Render toasts with SVG badges
     function showToast(text, isMe) {
         if (isMe && !text.startsWith('📋') && !text.startsWith('✅') && !text.startsWith('⏱️') && !text.startsWith('🔇') && !text.startsWith('🔊')) return;
+        
+        let iconHtml = `<svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        let cleanText = text;
+        let borderClass = 'border-cyan-500/40';
+
+        if (text.includes('✅')) {
+            iconHtml = `<svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>`;
+            cleanText = text.replace(/✅/g, '').trim();
+            borderClass = 'border-green-500/40';
+        } else if (text.includes('⚠️')) {
+            iconHtml = `<svg class="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+            cleanText = text.replace(/⚠️/g, '').trim();
+            borderClass = 'border-amber-500/40';
+        } else if (text.includes('❌')) {
+            iconHtml = `<svg class="w-4 h-4 text-red-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+            cleanText = text.replace(/❌/g, '').trim();
+            borderClass = 'border-red-500/40';
+        } else if (text.includes('📋')) {
+            iconHtml = `<svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>`;
+            cleanText = text.replace(/📋/g, '').trim();
+            borderClass = 'border-cyan-500/40';
+        } else if (text.includes('⏱️')) {
+            iconHtml = `<svg class="w-4 h-4 text-yellow-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+            cleanText = text.replace(/⏱️/g, '').trim();
+            borderClass = 'border-yellow-500/40';
+        } else if (text.includes('🎬')) {
+            iconHtml = `<svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
+            cleanText = text.replace(/🎬/g, '').trim();
+            borderClass = 'border-cyan-500/40';
+        } else if (text.includes('📝')) {
+            iconHtml = `<svg class="w-4 h-4 text-yellow-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M7 15h4M15 15h2M7 11h2M13 11h4"></path></svg>`;
+            cleanText = text.replace(/📝/g, '').trim();
+            borderClass = 'border-yellow-500/40';
+        } else if (text.includes('🔊') || text.includes('🔇')) {
+            const isMuted = text.includes('🔇');
+            iconHtml = isMuted
+                ? `<svg class="w-4 h-4 text-slate-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`
+                : `<svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+            cleanText = text.replace(/[🔊🔇]/g, '').trim();
+            borderClass = 'border-cyan-500/40';
+        }
+
         const toast = document.createElement('div');
-        toast.className = 'toast-msg bg-black/75 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-sm max-w-[250px] break-words border-r-4 border-cyan-500 shadow-lg pointer-events-auto';
-        toast.textContent = text;
+        toast.className = `toast-msg glass-island ${borderClass} text-slate-200 px-3.5 py-2 rounded-xl text-xs max-w-[280px] break-words shadow-2xl pointer-events-auto flex items-center gap-2 backdrop-blur-xl`;
+        
+        const textSpan = document.createElement('span');
+        textSpan.textContent = cleanText;
+
+        toast.innerHTML = iconHtml;
+        toast.appendChild(textSpan);
         toastContainer.appendChild(toast);
         toast.onclick = () => toggleSidebar(true);
         setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 4000);
@@ -666,11 +715,11 @@ window.addEventListener('load', () => {
                 showToast(data.auto ? 'دوست: سینک روشن' : 'دوست: سینک آزاد', false);
                 break;
             case 'sync':
-                partnerTimeDisplay.textContent = `⏱️ ${formatTime(data.time)}`;
+                partnerTimeDisplay.textContent = formatTime(data.time);
                 if (Date.now() - lastInteractionTime < 500) return;
 
                 if (isAutoSync) syncPlayer(data);
-                else if (data.play !== lastPartnerState.playing) showToast(data.play ? '▶️ دوست پخش کرد' : '⏸️ دوست متوقف کرد', false);
+                else if (data.play !== lastPartnerState.playing) showToast(data.play ? 'دوست پخش کرد' : 'دوست متوقف کرد', false);
                 lastPartnerState.playing = data.play;
                 break;
             case 'timed_reaction':
