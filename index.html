@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- SECURITY: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://www.youtube.com https://s.ytimg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://img.youtube.com https://i.ytimg.com blob: https:; media-src 'self' blob: https: http:; connect-src 'self' wss: ws: https: http:; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
+
+
+    <title>Syncnema 🍿</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FIX TAILWIND WARNING -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🍿</text></svg>">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <div id="landscape-warning"
+        class="fixed inset-0 z-[120] bg-gray-900 flex flex-col items-center justify-center text-center p-6">
+        <div class="phone-icon mb-6">📱</div>
+        <h2 class="text-xl font-bold text-cyan-400 mb-2">لطفاً گوشی را بچرخانید</h2>
+        <p class="text-gray-400 text-sm leading-relaxed mb-8">برای تجربه بهتر، گوشی را افقی کنید.</p>
+        <button id="dismiss-landscape"
+            class="text-gray-600 text-xs border-b border-gray-600 pb-0.5 hover:text-gray-400">ادامه در حالت
+            عمودی</button>
+    </div>
+
+    <div id="welcome-modal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-500 modal-overlay">
+        <div
+            class="modal-content rounded-2xl p-8 max-w-md w-full text-center shadow-2xl transform transition-transform duration-300 scale-100">
+            <div class="text-6xl mb-4">🍿</div>
+            <h1 class="text-2xl font-bold text-cyan-400 mb-2">به Syncnema خوش آمدید</h1>
+            <p class="text-gray-300 text-sm mb-6 leading-relaxed">
+                سینمای شخصی شما برای تماشای همزمان فیلم با دوستان.
+                <br>
+                <span class="text-yellow-500 text-xs mt-2 block">⚠️ مسئولیت محتوا بر عهده کاربر است.</span>
+            </p>
+            <button id="accept-btn"
+                class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                <span>ورود به سینما</span><span class="text-xl">🚀</span>
+            </button>
+            <div class="mt-6 pt-4 border-t border-gray-700">
+                <button id="donate-trigger-btn"
+                    class="text-amber-400 hover:text-amber-300 text-xs flex items-center justify-center gap-1 w-full transition-colors">
+                    <span>☕</span> <span>اگه دوست داشتی یه قهوه مهمونم کن</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 hidden modal-overlay">
+        <div class="modal-content border-amber-500/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
+            <button id="close-donate-modal"
+                class="absolute top-3 left-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <div class="text-5xl mb-3">☕</div>
+            <h2 class="text-xl font-bold text-amber-400 mb-2">حمایت از توسعه‌دهنده</h2>
+            <p class="text-gray-300 text-sm mb-6">سینک‌نما رایگان است. حمایت شما به پرداخت هزینه سرورها کمک می‌کند.</p>
+            <a id="donate-link-btn" href="#" target="_blank" rel="noopener noreferrer"
+                class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 mb-3">
+                <span>پرداخت امن و دلخواه</span><span class="text-lg">💳</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="video-modal" class="fixed inset-0 z-[90] flex items-center justify-center p-4 hidden modal-overlay">
+        <div class="modal-content rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button id="close-video-modal"
+                class="absolute top-4 left-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <h2 class="text-xl font-bold text-cyan-400 mb-4 text-center">🎬 انتخاب فیلم</h2>
+            <div class="space-y-4">
+                <div class="bg-gray-800 p-3 rounded-xl border border-gray-700">
+                    <label class="text-xs text-gray-400 mb-1 block">لینک مستقیم (MP4) یا یوتیوب:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="video-url-input" placeholder="https://..."
+                            class="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm w-full focus:border-cyan-500 outline-none ltr text-left">
+                        <button id="load-url-btn"
+                            class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm whitespace-nowrap">پخش</button>
+                    </div>
+                </div>
+                <div class="text-center text-xs text-gray-500">- یا -</div>
+                <label
+                    class="cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-600 border-dashed rounded-xl p-4 flex flex-col items-center justify-center transition-colors group">
+                    <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📁</span>
+                    <span class="text-sm text-gray-300">انتخاب فایل از دستگاه</span>
+                    <input type="file" id="video-file-input" accept="video/*,.mkv" class="hidden">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="sub-modal" class="fixed inset-0 z-[90] flex items-center justify-center p-4 hidden modal-overlay">
+        <div class="modal-content rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button id="close-sub-modal"
+                class="absolute top-4 left-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <h2 class="text-xl font-bold text-yellow-400 mb-4 text-center">📝 انتخاب زیرنویس</h2>
+            <div class="space-y-4">
+                <div class="bg-gray-800 p-3 rounded-xl border border-gray-700">
+                    <label class="text-xs text-gray-400 mb-1 block">لینک مستقیم زیرنویس (SRT/VTT):</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="sub-url-input" placeholder="https://..."
+                            class="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm w-full focus:border-yellow-500 outline-none ltr text-left">
+                        <button id="load-sub-url-btn"
+                            class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-2 rounded text-sm whitespace-nowrap">افزودن</button>
+                    </div>
+                </div>
+                <div class="text-center text-xs text-gray-500">- یا -</div>
+                <label
+                    class="cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-600 border-dashed rounded-xl p-4 flex flex-col items-center justify-center transition-colors group">
+                    <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📄</span>
+                    <span class="text-sm text-gray-300">انتخاب فایل زیرنویس</span>
+                    <input type="file" id="subtitle-file-input" accept=".vtt,.srt" class="hidden">
+                </label>
+                <div class="bg-gray-800 p-3 rounded-xl border border-gray-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-300">⏱️ تنظیم تاخیر زیرنویس:</span>
+                        <span id="sub-offset-display" class="text-xs font-mono text-yellow-400 font-bold">0.0s</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="sub-offset-minus" type="button" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 rounded text-xs transition-colors">-0.5 ثانیه</button>
+                        <button id="sub-offset-reset" type="button" class="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded text-xs transition-colors">ریست</button>
+                        <button id="sub-offset-plus" type="button" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 rounded text-xs transition-colors">+0.5 ثانیه</button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 text-center">زیرنویس به طور خودکار برای سایرین هم ارسال می‌شود.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tutorial-modal" class="fixed inset-0 z-[90] flex items-center justify-center p-4 hidden modal-overlay">
+        <div class="modal-content rounded-2xl p-6 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button id="close-tutorial-modal"
+                class="absolute top-4 left-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <div class="text-center mb-6 border-b border-gray-700 pb-4">
+                <h2 class="text-2xl font-bold text-cyan-400">راهنمای استفاده 🎓</h2>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6 text-sm text-gray-300">
+                <div class="space-y-4">
+                    <div class="flex gap-3">
+                        <div class="text-2xl">📡</div>
+                        <div><strong class="text-white block mb-1">اتصال به دوست:</strong> شناسه خود را کپی کنید و به
+                            دوستتان بدهید تا در باکس "ID دوست" وارد کند و "وصل" را بزند.</div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="text-2xl">🎬</div>
+                        <div><strong class="text-white block mb-1">پخش فیلم:</strong> روی دکمه 🎬 بزنید و فایل یا لینک
+                            ویدیو را انتخاب کنید.</div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="text-2xl">📝</div>
+                        <div><strong class="text-white block mb-1">زیرنویس:</strong> روی دکمه 📝 بزنید و زیرنویس را
+                            اضافه کنید. خودکار سینک می‌شود!</div>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex gap-3">
+                        <div class="text-2xl">🔗</div>
+                        <div><strong class="text-white block mb-1">حالت‌های سینک:</strong>
+                            <ul class="list-disc list-inside text-xs mt-1 text-gray-400">
+                                <li><span class="text-green-400">سینک روشن:</span> پخش/توقف همگانی.</li>
+                                <li><span class="text-gray-400">سینک آزاد:</span> کنترل جداگانه.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="text-2xl">✨</div>
+                        <div><strong class="text-white block mb-1">تعامل:</strong> از منوی سمت چپ بالا برای ارسال
+                            ری‌اکشن استفاده کنید.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 text-center"><button id="tutorial-ok-btn"
+                    class="bg-cyan-700 hover:bg-cyan-600 text-white px-8 py-2 rounded-lg font-bold">متوجه شدم!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOP BAR ===== -->
+    <div id="top-bar"
+        class="bg-gray-800 border-b border-gray-700 p-2 flex items-center justify-between gap-2 shadow-md z-20 relative filter blur-sm transition-all duration-500 h-14">
+
+        <div class="flex items-center gap-2 min-w-fit relative group">
+            <button id="tutorial-btn"
+                class="text-lg font-bold text-cyan-400 hidden sm:block hover:scale-105 transition-transform cursor-pointer">🍿
+                Syncnema</button>
+            <div id="tutorial-tooltip"
+                class="tutorial-tooltip absolute top-full right-0 mt-2 bg-cyan-600 text-white text-xs px-3 py-1 rounded shadow-lg hidden whitespace-nowrap z-50 pointer-events-none">
+                برای آموزش اینجا بزن 👆<div class="absolute -top-1 right-4 w-2 h-2 bg-cyan-600 transform rotate-45">
+                </div>
+            </div>
+
+            <div class="flex items-center bg-gray-900 rounded-full px-2 h-9 border border-gray-700 gap-2 cursor-help"
+                title="وضعیت اتصال">
+                <span id="connection-dot" class="pulse-dot st-red"></span>
+                <span id="status-text" class="text-xs font-medium text-gray-400 hidden lg:inline mr-1">قطع</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1 sm:gap-2">
+            <button id="video-modal-trigger"
+                class="bg-gray-700 hover:bg-gray-600 text-cyan-400 h-9 px-3 rounded-lg transition-colors flex items-center justify-center gap-1"
+                title="انتخاب فیلم">
+                🎬 <span class="hidden sm:inline text-xs font-bold">فیلم</span>
+            </button>
+            <button id="sub-modal-trigger"
+                class="bg-gray-700 hover:bg-gray-600 text-yellow-400 h-9 px-3 rounded-lg transition-colors flex items-center justify-center gap-1"
+                title="انتخاب زیرنویس">
+                📝 <span class="hidden sm:inline text-xs font-bold">زیرنویس</span>
+            </button>
+            <button id="sync-toggle-btn"
+                class="bg-gray-700 hover:bg-gray-600 text-green-400 h-9 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-colors min-w-[36px] md:min-w-[90px] text-xs">
+                <span>🔗</span> <span class="hidden md:inline">سینک روشن</span>
+            </button>
+            <button id="share-room-btn"
+                class="bg-cyan-700/90 hover:bg-cyan-600 text-white h-9 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-colors text-xs"
+                title="کپی لینک دعوت به اتاق">
+                <span>📋</span> <span class="hidden md:inline">لینک اتاق</span>
+            </button>
+            <button id="donate-trigger-btn-mobile"
+                class="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white h-9 px-3 rounded-lg font-bold border border-amber-600/50 transition-all flex items-center justify-center gap-1"
+                title="حمایت مالی">
+                ☕ <span class="hidden md:inline text-xs">حمایت</span>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-1 sm:gap-2">
+            <span id="partner-time-display"
+                class="text-[10px] text-gray-400 font-mono hidden xl:inline w-12 text-center" title="زمان فعلی دوست">⏱️
+                --:--</span>
+
+            <div
+                class="flex items-center bg-gray-900 rounded border border-gray-600 px-2 h-9 max-w-[70px] sm:max-w-none overflow-hidden">
+                <span id="my-id" class="font-mono text-cyan-400 font-bold text-xs cursor-pointer truncate"
+                    title="کپی شناسه">...</span>
+                <button id="edit-id-btn" class="text-gray-500 hover:text-white text-[10px] mr-1 hidden sm:block"
+                    title="تغییر شناسه">✏️</button>
+            </div>
+
+            <input type="text" id="partner-id-input" placeholder="ID دوست"
+                class="bg-gray-900 border border-gray-600 rounded px-2 h-9 text-xs w-16 sm:w-20 text-center outline-none">
+            <button id="connect-btn"
+                class="bg-green-700 hover:bg-green-600 text-white px-3 h-9 rounded text-xs">وصل</button>
+            <button id="disconnect-btn"
+                class="bg-red-700 hover:bg-red-600 text-white px-3 h-9 rounded text-xs hidden">قطع</button>
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="cinema-container"
+        class="flex-1 flex flex-row-reverse overflow-hidden relative w-full bg-black filter blur-sm transition-all duration-500">
+        <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full group">
+            <video id="my-video" class="w-full h-full max-h-screen object-contain" controls></video>
+            <div id="youtube-player-container" class="w-full h-full" style="display: none;">
+                <div id="youtube-player"></div>
+            </div>
+
+            <div id="playback-status-badge"
+                class="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-gray-900/80 backdrop-blur text-gray-300 text-xs px-3 py-1 rounded-full border border-gray-700 hidden z-20 transition-all">
+                آماده پخش
+            </div>
+
+            <div id="length-warning"
+                class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-600/90 text-white text-sm px-4 py-2 rounded shadow-lg backdrop-blur hidden z-10">
+                ⚠️ زمان ویدیوها یکسان نیست</div>
+            <div id="buffer-waiting-badge"
+                class="absolute top-16 left-1/2 transform -translate-x-1/2 bg-amber-600/90 text-white text-xs px-4 py-1.5 rounded-full shadow-lg backdrop-blur hidden z-30 transition-all flex items-center gap-2">
+                <span class="animate-spin text-sm">⏳</span>
+                <span id="buffer-waiting-text">منتظر بارگذاری ویدیو...</span>
+            </div>
+            <div id="reaction-area" class="absolute inset-0 pointer-events-none overflow-hidden z-40"></div>
+            <div id="toast-container"
+                class="absolute bottom-20 left-4 z-20 flex flex-col items-start gap-2 pointer-events-none max-w-[300px]">
+            </div>
+
+            <div class="absolute left-4 top-4 z-30 flex flex-col items-start gap-2">
+                <button id="reaction-toggle-btn"
+                    class="bg-gray-800/60 hover:bg-cyan-600/80 text-white w-10 h-10 rounded-full backdrop-blur shadow-lg flex items-center justify-center transition-all text-xl"
+                    title="ارسال واکنش">✨</button>
+                <div id="reaction-drawer"
+                    class="hidden flex flex-col gap-2 bg-gray-900/80 backdrop-blur rounded-lg p-2 shadow-xl transition-all origin-top-left">
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="❤️">❤️</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="😂">😂</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="😭">😭</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="😱">😱</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="😡">😡</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="👏">👏</button>
+                    <button class="reaction-btn text-2xl hover:scale-125 transition-transform"
+                        data-emoji="🤯">🤯</button>
+                </div>
+            </div>
+
+            <div class="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                <button id="toggle-chat-btn"
+                    class="bg-gray-800/80 hover:bg-cyan-600 text-white p-2 rounded-full shadow-lg backdrop-blur transition-all relative">
+                    💬 <span id="unread-badge"
+                        class="absolute -top-1 -right-1 bg-red-500 text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+                </button>
+                <button id="custom-fs-btn"
+                    class="bg-gray-800/80 hover:bg-white hover:text-black text-white p-2 rounded-full shadow-lg backdrop-blur transition-all fs-btn"
+                    title="تمام صفحه با چت">⛶</button>
+            </div>
+        </div>
+
+        <div id="chat-sidebar"
+            class="bg-gray-800 border-r border-gray-700 flex flex-col relative z-40 sidebar-closed shadow-2xl h-full shrink-0">
+            <div class="p-3 border-b border-gray-700 flex justify-between items-center bg-gray-900/90">
+                <h3 class="font-bold text-gray-300">گفتگو</h3>
+                <button id="close-sidebar-btn" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+            <div id="reply-preview"
+                class="bg-gray-700/90 p-2 text-xs text-gray-300 hidden flex justify-between border-t border-gray-600">
+            </div>
+            <div class="p-3 border-t border-gray-700 bg-gray-900/90 relative">
+                <div class="flex gap-2">
+                    <button id="emoji-btn" class="text-gray-400 hover:text-yellow-400 text-xl">😊</button>
+                    <input id="chat-input" type="text"
+                        class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm focus:border-cyan-500 outline-none text-right text-white"
+                        placeholder="پیام..." autocomplete="off">
+                    <button id="chat-send"
+                        class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 rounded text-sm">Send</button>
+                </div>
+                <emoji-picker class="light" style="display:none;"></emoji-picker>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api" defer></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+    <script src="script.js" defer></script>
+</body>
+
+</html>
