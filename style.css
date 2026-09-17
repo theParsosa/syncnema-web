@@ -214,6 +214,24 @@ body {
     pointer-events: none !important;
 }
 
+/* Scrollbar killer for no-scrollbar elements */
+.no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+.no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+/* Force buttons in top-bar to never display text */
+#top-bar button span,
+#sync-toggle-btn span,
+#sync-btn-label {
+    display: none !important;
+}
+
 @media (max-width: 768px), (max-height: 500px) {
     /* Ultra-Compact Top Bar on Mobile */
     #top-bar {
@@ -247,6 +265,11 @@ body {
         height: 1.625rem !important;
         padding: 0 !important;
         min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 9999px !important;
+        flex-shrink: 0 !important;
     }
     #video-modal-trigger svg,
     #sub-modal-trigger svg,
