@@ -173,6 +173,8 @@ body {
         0 25px 60px -10px rgba(0, 0, 0, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.04),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+    max-height: 90vh;
+    overflow-y: auto;
     border-radius: 1.5rem;
 }
 
@@ -213,22 +215,180 @@ body {
 }
 
 @media (max-width: 640px) {
+    /* Compact Top Bar on Mobile */
+    #top-bar {
+        top: 0.4rem !important;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+        gap: 0.25rem !important;
+    }
+    #top-bar .glass-island {
+        padding: 0.2rem 0.4rem !important;
+    }
+    #tutorial-btn {
+        font-size: 0.75rem !important;
+        gap: 0.2rem !important;
+    }
+    #tutorial-btn svg {
+        width: 0.95rem !important;
+        height: 0.95rem !important;
+    }
+    #video-modal-trigger,
+    #sub-modal-trigger,
+    #sync-toggle-btn,
+    #share-room-btn,
+    #donate-trigger-btn-mobile {
+        height: 1.75rem !important;
+        padding: 0 0.4rem !important;
+        font-size: 0.7rem !important;
+        gap: 0.2rem !important;
+    }
+    #video-modal-trigger svg,
+    #sub-modal-trigger svg,
+    #sync-toggle-btn svg,
+    #share-room-btn svg,
+    #donate-trigger-btn-mobile svg {
+        width: 0.85rem !important;
+        height: 0.85rem !important;
+    }
+    #my-id {
+        font-size: 0.68rem !important;
+        max-width: 45px !important;
+    }
+    #partner-id-input {
+        width: 3.25rem !important;
+        height: 1.75rem !important;
+        font-size: 0.68rem !important;
+        padding: 0 0.25rem !important;
+    }
+    #connect-btn,
+    #disconnect-btn {
+        height: 1.75rem !important;
+        padding: 0 0.4rem !important;
+        font-size: 0.68rem !important;
+    }
+    #connect-btn svg,
+    #disconnect-btn svg {
+        width: 0.75rem !important;
+        height: 0.75rem !important;
+    }
+
+    /* Floating Side Dock Buttons on Mobile */
+    #toggle-chat-btn,
+    #custom-fs-btn,
+    #reaction-toggle-btn {
+        width: 2.125rem !important;
+        height: 2.125rem !important;
+    }
+    #toggle-chat-btn svg,
+    #custom-fs-btn svg,
+    #reaction-toggle-btn svg {
+        width: 1rem !important;
+        height: 1rem !important;
+    }
+    .absolute.top-20.right-4 {
+        top: 3.25rem !important;
+        right: 0.4rem !important;
+        gap: 0.35rem !important;
+    }
+    .absolute.left-4.top-20 {
+        top: 3.25rem !important;
+        left: 0.4rem !important;
+    }
+
+    /* Compact Floating Chat Sidebar on Mobile */
     #chat-sidebar {
-        right: 0.5rem;
-        left: 0.5rem;
-        width: auto;
-        max-width: none;
-        top: 4.25rem;
-        bottom: 5rem;
-        border-radius: 1.25rem;
+        right: 3rem !important;
+        left: auto !important;
+        top: auto !important;
+        bottom: 4.25rem !important;
+        width: 270px !important;
+        max-width: calc(100vw - 3.6rem) !important;
+        height: 310px !important;
+        max-height: 48vh !important;
+        border-radius: 1.25rem !important;
+        mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.3) 10px, rgba(0, 0, 0, 0.85) 22px, black 32px, black 100%) !important;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.3) 10px, rgba(0, 0, 0, 0.85) 22px, black 32px, black 100%) !important;
+    }
+    #chat-sidebar.scrolled-history {
+        mask-image: linear-gradient(to bottom, black 0%, black 100%) !important;
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 100%) !important;
+    }
+    #chat-sidebar > div:first-child {
+        padding: 0.45rem 0.65rem !important;
+    }
+    #chat-sidebar > div:first-child h3 {
+        font-size: 0.75rem !important;
+    }
+    #close-sidebar-btn {
+        width: 1.35rem !important;
+        height: 1.35rem !important;
+        font-size: 0.95rem !important;
+    }
+    #chat-messages {
+        padding: 0.45rem 0.5rem !important;
+        gap: 0.3rem !important;
+    }
+    #chat-messages > div {
+        padding: 0.35rem 0.55rem !important;
+        font-size: 0.72rem !important;
+        line-height: 1.1rem !important;
+        margin-bottom: 0.2rem !important;
+        border-radius: 0.75rem !important;
+    }
+    #chat-sidebar > div:last-child {
+        padding: 0.35rem 0.5rem !important;
+    }
+    #chat-input {
+        height: 1.875rem !important;
+        padding: 0.2rem 0.55rem !important;
+        font-size: 0.72rem !important;
+    }
+    #emoji-btn {
+        width: 1.875rem !important;
+        height: 1.875rem !important;
+    }
+    #emoji-btn svg {
+        width: 0.95rem !important;
+        height: 0.95rem !important;
+    }
+    #chat-send {
+        height: 1.875rem !important;
+        padding: 0.2rem 0.5rem !important;
+        font-size: 0.68rem !important;
+    }
+    #chat-send svg {
+        width: 0.75rem !important;
+        height: 0.75rem !important;
+    }
+
+    /* Modals on Mobile */
+    .modal-content {
+        padding: 1.25rem !important;
+        max-width: 92vw !important;
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+        border-radius: 1.25rem !important;
     }
 }
+
 :fullscreen #chat-sidebar {
     position: absolute;
     right: 4.75rem;
     top: 4.75rem;
     bottom: 5.5rem;
     z-index: 60;
+}
+@media (max-width: 640px) {
+    :fullscreen #chat-sidebar {
+        right: 3rem !important;
+        bottom: 4.25rem !important;
+        top: auto !important;
+        width: 270px !important;
+        max-width: calc(100vw - 3.6rem) !important;
+        height: 310px !important;
+        max-height: 48vh !important;
+    }
 }
 
 /* Chat Header and Messages inside Translucent Sidebar */
