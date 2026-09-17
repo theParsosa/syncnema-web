@@ -431,20 +431,22 @@
                 </div>
                 <button id="close-sidebar-btn"
                     class="glass-btn w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-white text-lg transition-colors">&times;</button>
+            </div>
+
             <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-2.5 relative"></div>
             <div id="reply-preview"
                 class="bg-white/5 backdrop-blur-md p-2.5 text-xs text-slate-300 hidden flex justify-between border-t border-white/10 rounded-xl mx-2 my-1">
             </div>
-            <div class="p-3 border-t border-white/10 bg-white/[0.02] relative">
+            <div class="p-3 border-t border-white/10 bg-white/[0.02] relative shrink-0">
                 <div class="flex items-center gap-2">
-                    <button id="emoji-btn" class="glass-btn w-9 h-9 rounded-full flex items-center justify-center hover:scale-110" title="ایموجی">
+                    <button id="emoji-btn" class="glass-btn w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 shrink-0" title="ایموجی">
                         <svg class="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
                     </button>
                     <input id="chat-input" type="text"
                         class="glass-input flex-1 rounded-full px-3.5 py-1.5 text-sm focus:border-cyan-400 outline-none text-right placeholder-slate-500"
                         placeholder="ارسال پیام..." autocomplete="off">
                     <button id="chat-send"
-                        class="glass-btn glass-btn-primary px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5">
+                        class="glass-btn glass-btn-primary px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shrink-0">
                         <span>ارسال</span>
                         <svg class="w-3.5 h-3.5 transform -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>

@@ -293,16 +293,12 @@ window.addEventListener('load', () => {
     function toggleSidebar(open) {
         isSidebarOpen = open;
         if (open) {
+            applyTopFade();
             sidebar.classList.remove('sidebar-closed');
             unreadCount = 0; unreadBadge.classList.add('hidden');
             setTimeout(() => {
                 chatMsgs.scrollTop = chatMsgs.scrollHeight;
-                if (chatMsgs.scrollHeight > chatMsgs.clientHeight + 30) {
-                    applyTopFade();
-                } else {
-                    removeTopFade();
-                }
-            }, 300);
+            }, 100);
         } else {
             sidebar.classList.add('sidebar-closed');
         }
@@ -313,7 +309,6 @@ window.addEventListener('load', () => {
     // Smart scroll listener: reveals full history when scrolled up, restores top fade after scrolling back to bottom
     chatMsgs.addEventListener('scroll', () => {
         if (chatMsgs.scrollHeight <= chatMsgs.clientHeight + 20) {
-            removeTopFade();
             return;
         }
 
@@ -328,7 +323,7 @@ window.addEventListener('load', () => {
             clearTimeout(fadeRestoreTimer);
             fadeRestoreTimer = setTimeout(() => {
                 const stillNearBottom = (chatMsgs.scrollHeight - chatMsgs.scrollTop - chatMsgs.clientHeight) < 35;
-                if (stillNearBottom && chatMsgs.scrollHeight > chatMsgs.clientHeight + 30) {
+                if (stillNearBottom) {
                     applyTopFade();
                 }
             }, 2500);
