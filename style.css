@@ -175,48 +175,81 @@ body {
     border-radius: 1.5rem;
 }
 
-/* Chat Sidebar - Floating Frosted Glass Window */
+/* Chat Sidebar - Floating Frosted Glass Window on the Right */
 #chat-sidebar {
-    background: rgba(14, 16, 22, 0.85);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+    position: absolute;
+    right: 1.25rem;
+    top: 4.75rem;
+    bottom: 1.5rem;
+    width: 350px;
+    max-width: calc(100vw - 2.5rem);
+    background: rgba(14, 17, 24, 0.88);
+    backdrop-filter: blur(32px) saturate(190%);
+    -webkit-backdrop-filter: blur(32px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.5rem;
+    box-shadow: 
+        0 24px 60px -10px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
     transform: translateX(0);
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    width: 330px;
     opacity: 1;
+    z-index: 50;
+    overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    pointer-events: auto;
 }
 .sidebar-closed {
-    transform: translateX(100%) !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    border: none !important;
-    overflow: hidden !important;
+    transform: translateX(calc(100% + 2rem)) !important;
     opacity: 0 !important;
-    padding: 0 !important;
     pointer-events: none !important;
 }
 
 @media (max-width: 640px) {
     #chat-sidebar {
-        position: absolute;
-        right: 0;
-        top: 0;
-        height: 100%;
-        width: 100%;
-        z-index: 50;
+        right: 0.5rem;
+        left: 0.5rem;
+        width: auto;
+        max-width: none;
+        top: 4.25rem;
+        bottom: 1rem;
+        border-radius: 1.25rem;
     }
 }
 :fullscreen #chat-sidebar {
     position: absolute;
-    right: 0;
-    top: 0;
-    height: 100%;
-    width: 330px;
-    background: rgba(10, 15, 30, 0.78);
-    backdrop-filter: blur(28px);
-    z-index: 50;
+    right: 1.25rem;
+    top: 4.75rem;
+    bottom: 1.5rem;
+    z-index: 60;
+}
+
+/* Chat Top Fade & Gradient Mask */
+#chat-messages {
+    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.15) 12%, black 32%, black 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.15) 12%, black 32%, black 100%);
+    transition: mask-image 0.45s ease, -webkit-mask-image 0.45s ease;
+}
+#chat-messages.scrolled-history {
+    mask-image: linear-gradient(to bottom, black 0%, black 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 100%);
+}
+
+#chat-top-fade {
+    position: absolute;
+    top: 3.25rem;
+    inset-x: 0;
+    height: 3.5rem;
+    pointer-events: none;
+    z-index: 15;
+    background: linear-gradient(to bottom, rgba(14, 17, 24, 0.96) 0%, rgba(14, 17, 24, 0.65) 45%, transparent 100%);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 1;
+}
+#chat-top-fade.fade-hidden {
+    opacity: 0;
 }
 
 /* Toast Notifications */

@@ -421,10 +421,10 @@
             </div>
         </div>
 
-        <!-- Floating Frosted Chat Sidebar -->
+        <!-- Floating Frosted Chat Sidebar (Right Drawer) -->
         <aside id="chat-sidebar"
-            class="flex flex-col relative z-40 sidebar-closed shadow-2xl h-full shrink-0">
-            <div class="p-3.5 border-b border-white/10 flex justify-between items-center bg-white/[0.03]">
+            class="flex flex-col sidebar-closed shadow-2xl">
+            <div class="p-3.5 border-b border-white/10 flex justify-between items-center bg-white/[0.03] shrink-0 relative z-20">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                     <h3 class="font-bold text-slate-200 text-sm">اتاق گفتگو</h3>
@@ -432,7 +432,11 @@
                 <button id="close-sidebar-btn"
                     class="glass-btn w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-white text-lg transition-colors">&times;</button>
             </div>
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-2.5"></div>
+            
+            <!-- Dynamic Top Gradient Fade -->
+            <div id="chat-top-fade"></div>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-2.5 relative"></div>
             <div id="reply-preview"
                 class="bg-white/5 backdrop-blur-md p-2.5 text-xs text-slate-300 hidden flex justify-between border-t border-white/10 rounded-xl mx-2 my-1">
             </div>

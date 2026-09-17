@@ -39,6 +39,7 @@ window.addEventListener('load', () => {
     const sidebar = $('chat-sidebar');
     const toggleBtn = $('toggle-chat-btn');
     const closeSidebarBtn = $('close-sidebar-btn');
+    const chatTopFade = $('chat-top-fade');
     const toastContainer = $('toast-container');
     const unreadBadge = $('unread-badge');
     const replyPreview = $('reply-preview');
@@ -277,16 +278,64 @@ window.addEventListener('load', () => {
         }
     });
 
+    let fadeRestoreTimer = null;
+
+    function applyTopFade() {
+        clearTimeout(fadeRestoreTimer);
+        chatMsgs.classList.remove('scrolled-history');
+        if (chatTopFade) chatTopFade.classList.remove('fade-hidden');
+    }
+
+    function removeTopFade() {
+        clearTimeout(fadeRestoreTimer);
+        chatMsgs.classList.add('scrolled-history');
+        if (chatTopFade) chatTopFade.classList.add('fade-hidden');
+    }
+
     function toggleSidebar(open) {
         isSidebarOpen = open;
         if (open) {
             sidebar.classList.remove('sidebar-closed');
             unreadCount = 0; unreadBadge.classList.add('hidden');
-            setTimeout(() => chatMsgs.scrollTop = chatMsgs.scrollHeight, 300);
-        } else sidebar.classList.add('sidebar-closed');
+            setTimeout(() => {
+                chatMsgs.scrollTop = chatMsgs.scrollHeight;
+                if (chatMsgs.scrollHeight > chatMsgs.clientHeight + 30) {
+                    applyTopFade();
+                } else {
+                    removeTopFade();
+                }
+            }, 300);
+        } else {
+            sidebar.classList.add('sidebar-closed');
+        }
     }
     toggleBtn.onclick = () => toggleSidebar(!isSidebarOpen);
     closeSidebarBtn.onclick = () => toggleSidebar(false);
+
+    // Smart scroll listener: reveals full history when scrolled up, restores top fade after scrolling back to bottom
+    chatMsgs.addEventListener('scroll', () => {
+        if (chatMsgs.scrollHeight <= chatMsgs.clientHeight + 20) {
+            removeTopFade();
+            return;
+        }
+
+        const distanceFromBottom = chatMsgs.scrollHeight - chatMsgs.scrollTop - chatMsgs.clientHeight;
+        const isNearBottom = distanceFromBottom < 35;
+
+        if (!isNearBottom) {
+            // User scrolled up into history: immediately reveal top
+            removeTopFade();
+        } else {
+            // User scrolled back to bottom: restore fade after 2.5s
+            clearTimeout(fadeRestoreTimer);
+            fadeRestoreTimer = setTimeout(() => {
+                const stillNearBottom = (chatMsgs.scrollHeight - chatMsgs.scrollTop - chatMsgs.clientHeight) < 35;
+                if (stillNearBottom && chatMsgs.scrollHeight > chatMsgs.clientHeight + 30) {
+                    applyTopFade();
+                }
+            }, 2500);
+        }
+    });
 
     function updateSyncUI(auto) {
         isAutoSync = auto;
@@ -876,7 +925,7 @@ window.addEventListener('load', () => {
         div.id = data.id;
 
         const repBtn = document.createElement('button');
-        repBtn.innerHTML = '↩️';
+        repBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>`;
         repBtn.className = `absolute -top-2.5 ${isMe ? 'left-1' : 'right-1'} opacity-0 group-hover:opacity-100 text-xs transition-all glass-btn rounded-full w-6 h-6 flex items-center justify-center shadow-lg`;
         repBtn.onclick = () => {
             replyingTo = { id: data.id, txt: data.text };
@@ -900,6 +949,13 @@ window.addEventListener('load', () => {
         div.appendChild(repBtn);
         chatMsgs.appendChild(div);
         chatMsgs.scrollTop = chatMsgs.scrollHeight;
+        if (chatMsgs.scrollHeight > chatMsgs.clientHeight + 30) {
+            clearTimeout(fadeRestoreTimer);
+            fadeRestoreTimer = setTimeout(() => {
+                const stillNearBottom = (chatMsgs.scrollHeight - chatMsgs.scrollTop - chatMsgs.clientHeight) < 35;
+                if (stillNearBottom) applyTopFade();
+            }, 2500);
+        }
     }
 
     $('chat-send').onclick = () => {
