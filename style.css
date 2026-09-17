@@ -197,8 +197,8 @@ body {
     opacity: 1;
     z-index: 40;
     overflow: hidden;
-    mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.3) 10px, rgba(0, 0, 0, 0.85) 26px, black 38px, black 100%);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.3) 10px, rgba(0, 0, 0, 0.85) 26px, black 38px, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.35) 70%, rgba(0, 0, 0, 0.85) 80%, black 88%, black 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.35) 70%, rgba(0, 0, 0, 0.85) 80%, black 88%, black 100%);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, mask-image 0.45s ease, -webkit-mask-image 0.45s ease;
     pointer-events: auto;
 }
