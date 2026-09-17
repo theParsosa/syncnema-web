@@ -252,9 +252,9 @@
         class="fixed top-3 inset-x-0 z-30 px-3 sm:px-6 pointer-events-none filter blur-sm transition-all duration-500 flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
 
         <!-- Island 1: Brand & Status (Right Side in RTL) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-2.5 px-3.5 py-1.5 rounded-full relative group">
+        <div class="glass-island pointer-events-auto flex items-center gap-2 px-2.5 py-1.5 rounded-full relative group">
             <button id="tutorial-btn"
-                class="text-sm sm:text-base font-bold text-cyan-300 flex items-center gap-2 hover:scale-105 transition-transform cursor-pointer"
+                class="text-cyan-300 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer p-1"
                 title="راهنمای Syncnema">
                 <svg class="w-5 h-5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
@@ -266,7 +266,6 @@
                     <line x1="17" y1="17" x2="22" y2="17"></line>
                     <line x1="17" y1="7" x2="22" y2="7"></line>
                 </svg>
-                <span class="font-extrabold tracking-wide bg-gradient-to-r from-cyan-300 via-sky-200 to-white bg-clip-text text-transparent">Syncnema</span>
             </button>
             <div id="tutorial-tooltip"
                 class="tutorial-tooltip absolute top-full right-0 mt-2 bg-slate-900/95 border border-cyan-500/40 text-cyan-200 text-xs px-3 py-1.5 rounded-xl shadow-xl hidden whitespace-nowrap z-50 pointer-events-none backdrop-blur-md flex items-center gap-1.5">
@@ -275,55 +274,50 @@
                 <div class="absolute -top-1 right-5 w-2 h-2 bg-slate-900 border-t border-l border-cyan-500/40 transform rotate-45"></div>
             </div>
 
-            <div class="flex items-center bg-white/10 rounded-full px-2.5 py-1 border border-white/20 gap-1.5 cursor-help"
-                title="وضعیت اتصال شبکه">
+            <div id="status-container" class="flex items-center bg-white/10 rounded-full px-2 py-1 border border-white/20 gap-1.5 cursor-pointer select-none"
+                title="وضعیت اتصال (برای نمایش کلیک کنید)">
                 <span id="connection-dot" class="pulse-dot st-red"></span>
-                <span id="status-text" class="text-xs font-semibold text-slate-200 hidden md:inline">قطع</span>
+                <span id="status-text" class="text-xs font-semibold text-slate-200 hidden">قطع</span>
             </div>
         </div>
 
         <!-- Island 2: Media & Room Actions (Center) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full overflow-x-auto no-scrollbar max-w-[60vw] sm:max-w-none">
+        <div class="glass-island pointer-events-auto flex items-center gap-1.5 px-2 py-1.5 rounded-full overflow-x-auto no-scrollbar">
             <button id="video-modal-trigger"
-                class="glass-btn hover:border-cyan-400/50 h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap text-cyan-200"
+                class="glass-btn hover:border-cyan-400/50 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-cyan-200 shrink-0"
                 title="انتخاب فیلم">
-                <svg class="w-4 h-4 shrink-0 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                <span class="hidden sm:inline">فیلم</span>
+                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
             </button>
             <button id="sub-modal-trigger"
-                class="glass-btn hover:border-yellow-400/50 h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap text-yellow-200"
+                class="glass-btn hover:border-yellow-400/50 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-yellow-200 shrink-0"
                 title="انتخاب زیرنویس">
-                <svg class="w-4 h-4 shrink-0 text-yellow-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M7 15h4M15 15h2M7 11h2M13 11h4"></path></svg>
-                <span class="hidden sm:inline">زیرنویس</span>
+                <svg class="w-4 h-4 text-yellow-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M7 15h4M15 15h2M7 11h2M13 11h4"></path></svg>
             </button>
             <button id="sync-toggle-btn"
-                class="glass-btn glass-btn-green h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap min-w-[36px] md:min-w-[100px]"
-                title="تغییر وضعیت همگام‌سازی">
-                <svg id="sync-icon" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                <span id="sync-btn-label" class="hidden md:inline">سینک روشن</span>
+                class="glass-btn glass-btn-green h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0"
+                title="وضعیت همگام‌سازی (سینک)">
+                <svg id="sync-icon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             </button>
             <button id="share-room-btn"
-                class="glass-btn glass-btn-primary h-8 sm:h-9 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap"
+                class="glass-btn glass-btn-primary h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0"
                 title="کپی لینک دعوت به اتاق">
-                <svg class="w-4 h-4 shrink-0 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                <span class="hidden md:inline">لینک اتاق</span>
+                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
             </button>
             <button id="donate-trigger-btn-mobile"
-                class="glass-btn glass-btn-amber h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap"
-                title="حمایت از پروژه">
-                <svg class="w-4 h-4 shrink-0 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-                <span class="hidden md:inline">حمایت</span>
+                class="glass-btn glass-btn-amber h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0"
+                title="حمایت از توسعه‌دهنده">
+                <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
             </button>
         </div>
 
         <!-- Island 3: Peer & Hub (Left Side in RTL) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full">
+        <div class="glass-island pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full">
             <div class="hidden xl:flex items-center gap-1 text-[11px] text-slate-300 font-mono" title="زمان پخش دوست">
                 <svg class="w-3.5 h-3.5 text-cyan-400/80 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 <span id="partner-time-display">--:--</span>
             </div>
 
-            <div class="flex items-center bg-white/10 rounded-full border border-white/20 px-2.5 h-8 max-w-[85px] sm:max-w-none overflow-hidden"
+            <div class="flex items-center bg-white/10 rounded-full border border-white/20 px-2 h-8 max-w-[75px] sm:max-w-none overflow-hidden"
                 title="شناسه شما (برای کپی کلیک کنید)">
                 <span id="my-id" class="font-mono text-cyan-300 font-bold text-xs cursor-pointer truncate">...</span>
                 <button id="edit-id-btn" class="text-slate-300 hover:text-white p-0.5 rounded transition-colors mr-1 hidden sm:flex items-center"
@@ -333,15 +327,16 @@
             </div>
 
             <input type="text" id="partner-id-input" placeholder="ID دوست"
-                class="glass-input rounded-full px-3 h-8 text-xs w-16 sm:w-20 text-center placeholder-slate-400 text-white">
+                class="glass-input rounded-full px-2.5 h-8 text-xs w-16 sm:w-20 text-center placeholder-slate-400 text-white"
+                title="شناسه دوست شما">
             <button id="connect-btn"
-                class="glass-btn glass-btn-green px-3.5 h-8 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1">
-                <span>وصل</span>
+                class="glass-btn glass-btn-green h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0"
+                title="اتصال به دوست">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
             </button>
             <button id="disconnect-btn"
-                class="glass-btn bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 px-3.5 h-8 rounded-full text-xs font-bold whitespace-nowrap hidden flex items-center gap-1">
-                <span>قطع</span>
+                class="glass-btn bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 h-8 w-8 sm:h-9 sm:w-9 rounded-full hidden flex items-center justify-center shrink-0"
+                title="قطع اتصال">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>

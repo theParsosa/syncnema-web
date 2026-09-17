@@ -333,11 +333,13 @@ window.addEventListener('load', () => {
     function updateSyncUI(auto) {
         isAutoSync = auto;
         if (isAutoSync) {
-            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> <span class="hidden md:inline">سینک روشن</span>`;
+            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+            syncToggleBtn.title = 'سینک خودکار روشن (کلیک برای تغییر)';
             syncToggleBtn.classList.remove('opacity-60');
             syncToggleBtn.classList.add('glass-btn-green');
         } else {
-            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg> <span class="hidden md:inline">سینک آزاد</span>`;
+            syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.72-1.71"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>`;
+            syncToggleBtn.title = 'سینک آزاد / دستی (کلیک برای تغییر)';
             syncToggleBtn.classList.remove('glass-btn-green');
             syncToggleBtn.classList.add('opacity-60');
         }
@@ -522,6 +524,23 @@ window.addEventListener('load', () => {
             connectionDot.className = 'pulse-dot st-red';
             statusText.classList.remove('text-cyan-400');
         }
+        if (statusContainer) {
+            statusContainer.title = `وضعیت: ${msg} (برای نمایش/پنهان‌سازی کلیک کنید)`;
+        }
+    }
+
+    const statusContainer = $('status-container');
+    let statusHideTimer = null;
+    if (statusContainer) {
+        statusContainer.onclick = () => {
+            statusText.classList.toggle('hidden');
+            clearTimeout(statusHideTimer);
+            if (!statusText.classList.contains('hidden')) {
+                statusHideTimer = setTimeout(() => {
+                    statusText.classList.add('hidden');
+                }, 3000);
+            }
+        };
     }
 
     function switchPlayer(youtube) {
