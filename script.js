@@ -25,6 +25,8 @@ window.addEventListener('load', () => {
     const ytContainer = $('youtube-player-container');
     const statusText = $('status-text');
     const connectionDot = $('connection-dot');
+    const statusContainer = $('status-container');
+    let statusHideTimer = null;
     const playbackBadge = $('playback-status-badge');
     const bufferBadge = $('buffer-waiting-badge');
     const bufferText = $('buffer-waiting-text');
@@ -174,9 +176,6 @@ window.addEventListener('load', () => {
         topBar.classList.remove('blur-sm');
         cinemaContainer.classList.remove('blur-sm');
     }
-
-    // Connect immediately
-    connect();
 
     // Event Listeners for Elements formerly with onclick
 
@@ -529,15 +528,13 @@ window.addEventListener('load', () => {
         }
     }
 
-    const statusContainer = $('status-container');
-    let statusHideTimer = null;
     if (statusContainer) {
         statusContainer.onclick = () => {
-            statusText.classList.toggle('hidden');
+            statusContainer.classList.toggle('show-status');
             clearTimeout(statusHideTimer);
-            if (!statusText.classList.contains('hidden')) {
+            if (statusContainer.classList.contains('show-status')) {
                 statusHideTimer = setTimeout(() => {
-                    statusText.classList.add('hidden');
+                    statusContainer.classList.remove('show-status');
                 }, 3000);
             }
         };
@@ -1239,6 +1236,9 @@ window.addEventListener('load', () => {
         lastInteractionTime = Date.now();
         sendSync();
     };
+
+    // Connect to signaling server once all listeners & handlers are ready
+    connect();
 
     ['play', 'pause', 'seeked', 'ratechange'].forEach(evt => videoPlayer.addEventListener(evt, trackInteraction));
 });

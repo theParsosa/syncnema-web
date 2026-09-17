@@ -256,6 +256,14 @@ body {
         padding: 0.15rem 0.35rem !important;
         height: 1.5rem !important;
     }
+    #status-text {
+        display: none !important;
+        font-size: 0.65rem !important;
+        white-space: nowrap !important;
+    }
+    #status-container.show-status #status-text {
+        display: inline !important;
+    }
     #video-modal-trigger,
     #sub-modal-trigger,
     #sync-toggle-btn,
