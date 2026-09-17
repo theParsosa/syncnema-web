@@ -813,11 +813,11 @@ window.addEventListener('load', () => {
 
     function addMsg(data, isMe) {
         const div = document.createElement('div');
-        div.className = `p-2 rounded-lg text-sm break-words relative group mb-2 ${isMe ? 'bg-cyan-900 ml-4 rounded-br-none' : 'bg-gray-700 mr-4 rounded-bl-none'}`;
+        div.className = `p-2.5 rounded-2xl text-sm break-words relative group mb-2.5 border backdrop-blur-md shadow-sm transition-all ${isMe ? 'bg-cyan-500/20 border-cyan-400/30 text-cyan-50 ml-4 rounded-br-sm' : 'bg-white/10 border-white/10 text-slate-100 mr-4 rounded-bl-sm'}`;
 
         if (data.reply) {
             const r = document.createElement('div');
-            r.className = 'bg-black/20 p-1 mb-1 text-xs border-r-2 border-cyan-500 truncate cursor-pointer opacity-75';
+            r.className = 'bg-black/30 p-1.5 mb-1.5 text-xs rounded-xl border-r-2 border-cyan-400 truncate cursor-pointer opacity-85 backdrop-blur-sm';
             r.textContent = data.reply.txt;
             r.onclick = () => document.getElementById(data.reply.id)?.scrollIntoView({ behavior: 'smooth' });
             div.appendChild(r);
@@ -828,7 +828,7 @@ window.addEventListener('load', () => {
 
         const repBtn = document.createElement('button');
         repBtn.innerHTML = '↩️';
-        repBtn.className = `absolute -top-2 ${isMe ? 'left-0' : 'right-0'} opacity-0 group-hover:opacity-100 text-xs transition-opacity bg-gray-800 rounded-full p-0.5`;
+        repBtn.className = `absolute -top-2.5 ${isMe ? 'left-1' : 'right-1'} opacity-0 group-hover:opacity-100 text-xs transition-all glass-btn rounded-full w-6 h-6 flex items-center justify-center shadow-lg`;
         repBtn.onclick = () => {
             replyingTo = { id: data.id, txt: data.text };
 

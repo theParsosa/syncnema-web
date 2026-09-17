@@ -1,74 +1,340 @@
-body { font-family: 'Vazirmatn', sans-serif; overflow: hidden; }
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-::-webkit-scrollbar-track { background: #1f2937; }
+/* ==========================================================================
+   Syncnema 🍿 - Apple VisionOS / Frost Minimal Liquid Glass Theme
+   ========================================================================== */
 
-@keyframes fadeInSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 0.8; transform: translateY(0); } }
-.toast-msg { animation: fadeInSlide 0.3s ease-out forwards; }
-
-@keyframes floatUp {
-    0% { transform: translateY(0) scale(0.5); opacity: 0; }
-    20% { transform: translateY(-20px) scale(1.2); opacity: 1; }
-    80% { transform: translateY(-80px) scale(1); opacity: 0.8; }
-    100% { transform: translateY(-150px) scale(0.5); opacity: 0; }
+body {
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #060911;
+    color: #f8fafc;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
 }
-.reaction-anim { position: absolute; animation: floatUp 2s ease-out forwards; pointer-events: none; font-size: 3rem; text-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 45; }
 
-emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 60; --emoji-font-family: 'Vazirmatn'; height: 300px; width: 100%; }
+/* Custom Scrollbar - Frost Glass Minimal */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
 
-#chat-sidebar { transform: translateX(0); transition: all 0.3s ease; width: 320px; opacity: 1; }
-.sidebar-closed { transform: translateX(100%) !important; width: 0 !important; min-width: 0 !important; border: none !important; overflow: hidden !important; opacity: 0 !important; padding: 0 !important; pointer-events: none !important; }
+/* Ambient Background Lights */
+.ambient-glow-1 {
+    position: fixed;
+    top: -10%;
+    left: 15%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(60px);
+}
+.ambient-glow-2 {
+    position: fixed;
+    bottom: -15%;
+    right: 10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(80px);
+}
 
-@media (max-width: 640px) { #chat-sidebar { position: absolute; right: 0; top: 0; height: 100%; width: 100%; z-index: 50; } }
-:fullscreen #chat-sidebar { position: absolute; right: 0; top: 0; height: 100%; width: 320px; background-color: rgba(31, 41, 55, 0.85); backdrop-filter: blur(5px); z-index: 50; }
-.fs-btn { text-shadow: 0 0 5px black; }
-.overflow-x-hidden { overflow-x: hidden; }
+/* ==========================================================================
+   VisionOS Liquid Glass Core Classes
+   ========================================================================== */
 
+/* Floating Island Container */
+.glass-island {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 
+        0 16px 36px -8px rgba(0, 0, 0, 0.5),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-island:hover {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 
+        0 20px 45px -8px rgba(0, 0, 0, 0.6),
+        inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Liquid Glass Interactive Buttons */
+.glass-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+}
+.glass-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+.glass-btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Accent Button States */
+.glass-btn-primary {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(14, 165, 233, 0.15));
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+.glass-btn-primary:hover {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(14, 165, 233, 0.3));
+    border-color: rgba(56, 189, 248, 0.6);
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+.glass-btn-amber {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.15));
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+}
+.glass-btn-amber:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.3));
+    border-color: rgba(245, 158, 11, 0.6);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
+}
+
+.glass-btn-green {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #4ade80;
+}
+.glass-btn-green:hover {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(16, 185, 129, 0.3));
+    border-color: rgba(34, 197, 94, 0.6);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.3);
+}
+
+/* Glass Inputs */
+.glass-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: white;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    outline: none;
+}
+
+/* VisionOS Floating Modals */
+.modal-overlay {
+    background-color: rgba(2, 6, 23, 0.65);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+.modal-content {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(36px) saturate(200%);
+    -webkit-backdrop-filter: blur(36px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 
+        0 25px 60px -15px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.25);
+    border-radius: 1.75rem;
+}
+
+/* Chat Sidebar - Floating Frosted Glass Window */
+#chat-sidebar {
+    background: rgba(10, 15, 30, 0.68);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+    transform: translateX(0);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 330px;
+    opacity: 1;
+}
+.sidebar-closed {
+    transform: translateX(100%) !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+}
+
+@media (max-width: 640px) {
+    #chat-sidebar {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        z-index: 50;
+    }
+}
+:fullscreen #chat-sidebar {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 330px;
+    background: rgba(10, 15, 30, 0.78);
+    backdrop-filter: blur(28px);
+    z-index: 50;
+}
+
+/* Toast Notifications */
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(12px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.toast-msg {
+    animation: fadeInSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    background: rgba(15, 23, 42, 0.75) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Floating Status Badges */
+.pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.st-red {
+    background-color: #f87171;
+    box-shadow: 0 0 8px #f87171;
+}
+.st-yellow {
+    background-color: #fbbf24;
+    box-shadow: 0 0 8px #fbbf24;
+    animation: pulse 1s infinite;
+}
+.st-green {
+    background-color: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+}
+.st-blue {
+    background-color: #38bdf8;
+    box-shadow: 0 0 10px #38bdf8;
+}
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Video Subtitles */
 video::cue {
     font-family: 'Vazirmatn', sans-serif;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    font-size: 1.1em;
-    text-shadow: 1px 1px 2px black;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    font-size: 1.15em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    border-radius: 6px;
+    padding: 2px 8px;
 }
 
-.modal-overlay { background-color: rgba(17, 24, 39, 0.95); backdrop-filter: blur(10px); }
-.modal-content { background-color: #1f2937; border: 1px solid #374151; }
-
-.pulse-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.st-red { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; }
-.st-yellow { background-color: #facc15; animation: pulse 1s infinite; }
-.st-green { background-color: #4ade80; box-shadow: 0 0 5px #4ade80; }
-.st-blue { background-color: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-#landscape-warning { display: none; }
-@media only screen and (max-width: 768px) and (orientation: portrait) {
-    #landscape-warning { display: flex; }
-    #landscape-warning.hidden-force { display: none !important; }
-}
-@keyframes rotate-phone { 0%, 10% { transform: rotate(0deg); } 40%, 60% { transform: rotate(90deg); } 90%, 100% { transform: rotate(0deg); } }
-.phone-icon { font-size: 4rem; animation: rotate-phone 3s infinite ease-in-out; }
-
+/* Interactive Timestamps in Chat */
 .timestamp-chip {
     display: inline-block;
     direction: ltr;
     unicode-bidi: embed;
-    background: rgba(6, 182, 212, 0.2);
+    background: rgba(56, 189, 248, 0.15);
     color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    border-radius: 4px;
-    padding: 0 5px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 9999px;
+    padding: 1px 7px;
     margin: 0 2px;
     font-family: monospace;
-    font-size: 0.85em;
+    font-size: 0.82em;
     cursor: pointer;
     transition: all 0.15s ease;
     user-select: none;
 }
 .timestamp-chip:hover {
-    background: rgba(6, 182, 212, 0.5);
+    background: rgba(56, 189, 248, 0.35);
     color: #ffffff;
-    transform: scale(1.05);
+    border-color: rgba(56, 189, 248, 0.6);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    transform: scale(1.04);
 }
 
+/* Floating Reactions Animation */
+@keyframes floatUp {
+    0% { transform: translateY(0) scale(0.5); opacity: 0; }
+    20% { transform: translateY(-25px) scale(1.2); opacity: 1; }
+    80% { transform: translateY(-100px) scale(1); opacity: 0.85; }
+    100% { transform: translateY(-180px) scale(0.6); opacity: 0; }
+}
+.reaction-anim {
+    position: absolute;
+    animation: floatUp 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: none;
+    font-size: 3.2rem;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+    z-index: 45;
+}
+
+emoji-picker {
+    position: absolute;
+    bottom: 75px;
+    left: 10px;
+    z-index: 60;
+    --emoji-font-family: 'Vazirmatn';
+    height: 320px;
+    width: calc(100% - 20px);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Landscape Mode Prompt */
+#landscape-warning { display: none; }
+@media only screen and (max-width: 768px) and (orientation: portrait) {
+    #landscape-warning { display: flex; }
+    #landscape-warning.hidden-force { display: none !important; }
+}
+@keyframes rotate-phone {
+    0%, 10% { transform: rotate(0deg); }
+    40%, 60% { transform: rotate(90deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+.phone-icon {
+    font-size: 4rem;
+    animation: rotate-phone 3s infinite ease-in-out;
+}
