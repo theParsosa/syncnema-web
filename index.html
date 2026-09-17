@@ -198,82 +198,85 @@
         class="fixed top-3 inset-x-0 z-30 px-3 sm:px-6 pointer-events-none filter blur-sm transition-all duration-500 flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
 
         <!-- Island 1: Brand & Status (Right Side in RTL) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full relative group">
+        <div class="glass-island pointer-events-auto flex items-center gap-2.5 px-3.5 py-1.5 rounded-full relative group">
             <button id="tutorial-btn"
-                class="text-sm sm:text-base font-bold text-cyan-400 flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
+                class="text-sm sm:text-base font-bold text-cyan-300 flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
                 title="راهنمای Syncnema">
                 <span class="text-lg">🍿</span>
-                <span class="hidden sm:inline font-extrabold tracking-wide bg-gradient-to-r from-cyan-400 to-sky-300 bg-clip-text text-transparent">Syncnema</span>
+                <span class="font-extrabold tracking-wide bg-gradient-to-r from-cyan-300 via-sky-200 to-white bg-clip-text text-transparent">Syncnema</span>
             </button>
             <div id="tutorial-tooltip"
-                class="tutorial-tooltip absolute top-full right-0 mt-2 bg-slate-900/90 border border-cyan-500/30 text-cyan-200 text-xs px-3 py-1.5 rounded-xl shadow-xl hidden whitespace-nowrap z-50 pointer-events-none backdrop-blur-md">
+                class="tutorial-tooltip absolute top-full right-0 mt-2 bg-slate-900/95 border border-cyan-500/40 text-cyan-200 text-xs px-3 py-1.5 rounded-xl shadow-xl hidden whitespace-nowrap z-50 pointer-events-none backdrop-blur-md">
                 آموزش استفاده 👆
-                <div class="absolute -top-1 right-5 w-2 h-2 bg-slate-900 border-t border-l border-cyan-500/30 transform rotate-45"></div>
+                <div class="absolute -top-1 right-5 w-2 h-2 bg-slate-900 border-t border-l border-cyan-500/40 transform rotate-45"></div>
             </div>
 
-            <div class="flex items-center bg-white/5 rounded-full px-2.5 py-1 border border-white/10 gap-1.5 cursor-help"
+            <div class="flex items-center bg-white/10 rounded-full px-2.5 py-1 border border-white/20 gap-1.5 cursor-help"
                 title="وضعیت اتصال شبکه">
                 <span id="connection-dot" class="pulse-dot st-red"></span>
-                <span id="status-text" class="text-xs font-medium text-slate-300 hidden md:inline">قطع</span>
+                <span id="status-text" class="text-xs font-semibold text-slate-200 hidden md:inline">قطع</span>
             </div>
         </div>
 
         <!-- Island 2: Media & Room Actions (Center) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-full overflow-x-auto no-scrollbar max-w-[58vw] sm:max-w-none">
+        <div class="glass-island pointer-events-auto flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full overflow-x-auto no-scrollbar max-w-[60vw] sm:max-w-none">
             <button id="video-modal-trigger"
-                class="glass-btn text-cyan-300 h-8 sm:h-9 px-2.5 sm:px-3 rounded-full flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap"
+                class="glass-btn hover:border-cyan-400/50 h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap text-cyan-200"
                 title="انتخاب فیلم">
-                <span>🎬</span> <span class="hidden sm:inline">فیلم</span>
+                <span class="text-sm">🎬</span> <span class="hidden sm:inline">فیلم</span>
             </button>
             <button id="sub-modal-trigger"
-                class="glass-btn text-yellow-300 h-8 sm:h-9 px-2.5 sm:px-3 rounded-full flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap"
+                class="glass-btn hover:border-yellow-400/50 h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap text-yellow-200"
                 title="انتخاب زیرنویس">
-                <span>📝</span> <span class="hidden sm:inline">زیرنویس</span>
+                <span class="text-sm">📝</span> <span class="hidden sm:inline">زیرنویس</span>
             </button>
             <button id="sync-toggle-btn"
-                class="glass-btn glass-btn-green h-8 sm:h-9 px-2.5 sm:px-3 rounded-full flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap min-w-[32px] md:min-w-[95px]"
+                class="glass-btn glass-btn-green h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap min-w-[36px] md:min-w-[100px]"
                 title="تغییر وضعیت همگام‌سازی">
-                <span>🔗</span> <span class="hidden md:inline">سینک روشن</span>
+                <span class="text-sm">🔗</span> <span class="hidden md:inline">سینک روشن</span>
             </button>
             <button id="share-room-btn"
-                class="glass-btn glass-btn-primary h-8 sm:h-9 px-3 sm:px-3.5 rounded-full flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap"
+                class="glass-btn glass-btn-primary h-8 sm:h-9 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap"
                 title="کپی لینک دعوت به اتاق">
-                <span>📋</span> <span class="hidden md:inline">لینک اتاق</span>
+                <span class="text-sm">📋</span> <span class="hidden md:inline">لینک اتاق</span>
             </button>
             <button id="donate-trigger-btn-mobile"
-                class="glass-btn glass-btn-amber h-8 sm:h-9 px-2.5 sm:px-3 rounded-full flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap"
+                class="glass-btn glass-btn-amber h-8 sm:h-9 px-3 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap"
                 title="حمایت از پروژه">
-                <span>☕</span> <span class="hidden md:inline">حمایت</span>
+                <span class="text-sm">☕</span> <span class="hidden md:inline">حمایت</span>
             </button>
         </div>
 
         <!-- Island 3: Peer & Hub (Left Side in RTL) -->
-        <div class="glass-island pointer-events-auto flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full">
+        <div class="glass-island pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full">
             <span id="partner-time-display"
-                class="text-[10px] text-slate-400 font-mono hidden xl:inline w-12 text-center" title="زمان پخش دوست">⏱️ --:--</span>
+                class="text-[11px] text-slate-300 font-mono hidden xl:inline w-12 text-center" title="زمان پخش دوست">⏱️ --:--</span>
 
-            <div class="flex items-center bg-white/5 rounded-full border border-white/10 px-2.5 h-8 max-w-[75px] sm:max-w-none overflow-hidden"
+            <div class="flex items-center bg-white/10 rounded-full border border-white/20 px-2.5 h-8 max-w-[85px] sm:max-w-none overflow-hidden"
                 title="شناسه شما (برای کپی کلیک کنید)">
                 <span id="my-id" class="font-mono text-cyan-300 font-bold text-xs cursor-pointer truncate">...</span>
-                <button id="edit-id-btn" class="text-slate-400 hover:text-white text-[11px] mr-1 hidden sm:block"
+                <button id="edit-id-btn" class="text-slate-300 hover:text-white text-[11px] mr-1 hidden sm:block"
                     title="ویرایش شناسه">✏️</button>
             </div>
 
             <input type="text" id="partner-id-input" placeholder="ID دوست"
-                class="glass-input rounded-full px-2.5 h-8 text-xs w-16 sm:w-20 text-center placeholder-slate-500">
+                class="glass-input rounded-full px-3 h-8 text-xs w-16 sm:w-20 text-center placeholder-slate-400 text-white">
             <button id="connect-btn"
-                class="glass-btn glass-btn-green px-3 h-8 rounded-full text-xs font-bold whitespace-nowrap">وصل</button>
+                class="glass-btn glass-btn-green px-3.5 h-8 rounded-full text-xs font-bold whitespace-nowrap">وصل</button>
             <button id="disconnect-btn"
-                class="glass-btn bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 px-3 h-8 rounded-full text-xs font-bold whitespace-nowrap hidden">قطع</button>
+                class="glass-btn bg-red-500/30 border border-red-500/50 text-red-200 hover:bg-red-500/40 px-3.5 h-8 rounded-full text-xs font-bold whitespace-nowrap hidden">قطع</button>
         </div>
     </header>
 
     <!-- ===== MAIN CINEMA CONTAINER ===== -->
     <main id="cinema-container"
-        class="flex-1 flex flex-row-reverse overflow-hidden relative w-full h-full bg-[#030712] filter blur-sm transition-all duration-500">
+        class="flex-1 flex flex-row-reverse overflow-hidden relative w-full h-full bg-black filter blur-sm transition-all duration-500">
 
-        <!-- Center Player Viewport -->
-        <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full group pt-16 sm:pt-20">
+        <!-- Top Gradient Scrim to enhance contrast behind floating islands -->
+        <div class="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none z-20"></div>
+
+        <!-- Center Player Viewport (Fills entire screen without top void) -->
+        <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full group">
             <video id="my-video" class="w-full h-full max-h-screen object-contain" controls></video>
             <div id="youtube-player-container" class="w-full h-full" style="display: none;">
                 <div id="youtube-player"></div>
