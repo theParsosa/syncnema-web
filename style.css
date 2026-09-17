@@ -237,8 +237,13 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 #chat-messages {
+    display: flex;
+    flex-direction: column;
     mask-image: none;
     -webkit-mask-image: none;
+}
+#chat-messages > :first-child {
+    margin-top: auto !important;
 }
 #chat-top-fade {
     display: none;
