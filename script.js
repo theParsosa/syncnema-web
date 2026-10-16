@@ -147,11 +147,25 @@ window.addEventListener('load', () => {
     const PARTYKIT_HOST = 'socket.syncnema.ir';
 
     const urlParams = new URLSearchParams(window.location.search);
-    let currentRoomId = urlParams.get('room') || urlParams.get('join') || '';
+    let currentRoomId = urlParams.get('room') || '';
+    let isOriginalCreator = false;
     if (!currentRoomId) {
         currentRoomId = randomId();
+        isOriginalCreator = true;
         const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${currentRoomId}`;
         window.history.replaceState({ path: newUrl }, '', newUrl);
+    }
+
+    const hostStorageKey = `syncnema_host_key_${currentRoomId}`;
+    let myHostKey = localStorage.getItem(hostStorageKey);
+    let isHost = false;
+
+    if (isOriginalCreator && !myHostKey) {
+        myHostKey = 'hkey_' + randomId() + randomId();
+        localStorage.setItem(hostStorageKey, myHostKey);
+        isHost = true;
+    } else if (myHostKey) {
+        isHost = true;
     }
 
     const getWsUrl = () => `wss://${PARTYKIT_HOST}/party/${encodeURIComponent(currentRoomId)}?_t=${Date.now()}`;
@@ -697,42 +711,48 @@ window.addEventListener('load', () => {
         window.initYTSafe(id);
     }
 
-    function connect() {
-        setStatus('در حال اتصال...', 'yellow');
+    let roomMembers = new Map();
+    let isLiveMode = true;
+    let isUserMuted = false;
+    let canUserControl = isHost;
 
-        ws = new WebSocket(getWsUrl());
-        ws.onopen = () => {
-            ws.send(JSON.stringify({ type: 'register', id: myId }));
-            reconnectAttempts = 0;
-            setStatus('متصل به سرور', 'ok');
+    let currentRoomState = {
+        roomId: currentRoomId,
+        hostId: isHost ? myId : null,
+        mode: 'cinema', // 'cinema' | 'open'
+        isLocked: false,
+        media: { type: 'empty' },
+        liveClock: { time: 0, playing: false, rate: 1, timestamp: Date.now() }
+    };
 
-            const joinParam = urlParams.get('join');
-            if (joinParam && joinParam !== myId) {
-                partnerInput.value = joinParam;
-                partnerId = joinParam;
-                roomPeers.add(joinParam);
-                setStatus('در حال اتصال...', 'yellow');
-                send(joinParam, { type: 'conn_req' });
-            } else if (partnerId) {
-                setStatus('اتصال مجدد...', 'yellow');
-                send(partnerId, { type: 'reconnect_req' });
-            }
+    function getAuthoritativeState() {
+        return {
+            ...currentRoomState,
+            hostId: myId,
+            liveClock: {
+                time: isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime,
+                playing: isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused,
+                rate: isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate,
+                timestamp: Date.now()
+            },
+            users: Array.from(roomMembers.values())
         };
-        ws.onerror = () => {
-            console.log('WS Error');
-        };
-        ws.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'signal' && msg.from) handleData(msg.data, msg.from);
-            } catch (err) { }
-        };
-        ws.onclose = () => {
-            const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
-            setStatus(`قطع (${reconnectAttempts})`, 'err');
-            if (!partnerId && roomPeers.size === 0) resetState(false);
-            setTimeout(connect, delay);
-        };
+    }
+
+    function updateRoomUI() {
+        const count = roomMembers.size || 1;
+        const countBadges = document.querySelectorAll('.spectators-count-badge');
+        countBadges.forEach(b => b.textContent = count);
+
+        const adminBtn = $('admin-panel-trigger');
+        if (adminBtn) {
+            if (isHost) adminBtn.classList.remove('hidden');
+            else adminBtn.classList.add('hidden');
+        }
+
+        if (typeof updateSpectatorsList === 'function') {
+            updateSpectatorsList();
+        }
     }
 
     function send(to, data) {
@@ -742,94 +762,278 @@ window.addEventListener('load', () => {
     }
 
     function broadcast(data) {
-        if (roomPeers.size > 0) {
-            roomPeers.forEach(peer => send(peer, data));
-        } else if (partnerId) {
-            send(partnerId, data);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            roomMembers.forEach((user, id) => {
+                if (id !== myId) send(id, data);
+            });
+            ws.send(JSON.stringify({ type: 'signal', data }));
         }
     }
 
-    function sendCurrentMediaState(to) {
-        if (isYouTubeMode && ytPlayer?.getVideoData) {
-            const vid = ytPlayer.getVideoData().video_id;
-            if (vid) send(to, { type: 'load_yt', id: vid });
-        } else if (videoPlayer.src && !videoPlayer.src.startsWith('blob:')) {
-            send(to, { type: 'load_url', url: videoPlayer.src, isHls: !!hlsInstance });
-        }
+    function connect() {
+        setStatus('در حال اتصال...', 'yellow');
+
+        ws = new WebSocket(getWsUrl());
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ type: 'register', id: myId }));
+            reconnectAttempts = 0;
+            setStatus('متصل به اتاق', 'ok');
+
+            roomMembers.set(myId, {
+                id: myId,
+                name: myProfile?.name || 'تماشاگر',
+                avatar: myProfile?.avatar || '🍿',
+                color: myProfile?.color || '#38bdf8',
+                isHost: isHost,
+                canControl: isHost,
+                isMuted: false,
+                isBuffering: false,
+                time: 0,
+                isLive: true
+            });
+
+            broadcast({
+                type: 'join_room',
+                user: myProfile || { id: myId, name: 'تماشاگر', avatar: '🍿', color: '#38bdf8' },
+                hostKey: myHostKey,
+                isHost: isHost
+            });
+
+            updateRoomUI();
+        };
+
+        ws.onerror = () => {
+            console.log('WS Error');
+        };
+
+        ws.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'signal') {
+                    const payload = msg.data || msg;
+                    const from = msg.from || payload.fromUser || payload.userId;
+                    if (payload && payload.type) {
+                        handleData(payload, from);
+                    }
+                }
+            } catch (err) { }
+        };
+
+        ws.onclose = () => {
+            const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
+            setStatus(`قطع (${reconnectAttempts})`, 'err');
+            setTimeout(connect, delay);
+        };
     }
 
     function handleData(data, from) {
-        const handshakeTypes = ['conn_req', 'conn_ack', 'reconnect_req', 'reconnect_ack'];
-        if (from !== partnerId && !roomPeers.has(from) && !handshakeTypes.includes(data.type)) return;
+        if (!data || !data.type) return;
 
         switch (data.type) {
-            case 'conn_req':
-                roomPeers.add(from);
-                partnerId = from;
-                partnerInput.value = from;
-                setConnected();
-                send(from, { type: 'conn_ack', peers: Array.from(roomPeers) });
-                sendCurrentMediaState(from);
-                break;
-            case 'conn_ack':
-                if (connTimeout) {
-                    clearTimeout(connTimeout);
-                    connTimeout = null;
-                }
-                pendingPartnerId = null;
-                roomPeers.add(from);
-                partnerId = from;
-                partnerInput.value = from;
-                setConnected();
-                if (Array.isArray(data.peers)) {
-                    data.peers.forEach(peerId => {
-                        if (peerId !== myId && !roomPeers.has(peerId)) {
-                            roomPeers.add(peerId);
-                            send(peerId, { type: 'conn_req' });
-                        }
-                    });
-                }
-                broadcast({ type: 'req_src' });
-                break;
-            case 'reconnect_req':
-                roomPeers.add(from);
-                partnerId = from;
-                send(from, { type: 'reconnect_ack' });
-                setConnected();
-                break;
-            case 'reconnect_ack':
-                roomPeers.add(from);
-                partnerId = from;
-                setConnected();
-                break;
-            case 'ping':
-                send(from, { type: 'pong' });
-                break;
-            case 'pong':
-                lastPong = Date.now();
-                break;
-            case 'disconnect':
-                roomPeers.delete(from);
-                showToast(`کاربر (${from.slice(0, 4)}) از اتاق خارج شد`, false);
-                if (roomPeers.size === 0) resetState(true);
-                else updateConnectedStatus();
-                break;
-            case 'buffering':
-                if (data.status) {
-                    if (bufferBadge) {
-                        if (bufferText) bufferText.textContent = `منتظر بارگذاری ویدیو (${from.slice(0, 4)})...`;
-                        bufferBadge.classList.remove('hidden');
+            case 'join_room': {
+                if (!from || from === myId) return;
+
+                if (isHost) {
+                    if (currentRoomState.isLocked && (!data.hostKey || data.hostKey !== myHostKey)) {
+                        send(from, { type: 'join_rejected', reason: 'اتاق توسط میزبان قفل شده است.' });
+                        return;
                     }
-                    if (!videoPlayer.paused) videoPlayer.pause();
-                } else {
-                    if (bufferBadge) bufferBadge.classList.add('hidden');
-                    if (videoPlayer.paused && isAutoSync) videoPlayer.play().catch(() => { });
+                }
+
+                const user = data.user || {};
+                roomMembers.set(from, {
+                    id: from,
+                    name: user.name || 'تماشاگر',
+                    avatar: user.avatar || '🍿',
+                    color: user.color || '#38bdf8',
+                    isHost: !!data.isHost,
+                    canControl: !!data.isHost || currentRoomState.mode === 'open',
+                    isMuted: false,
+                    isBuffering: false,
+                    time: 0,
+                    isLive: true
+                });
+
+                showToast(`👋 ${user.name || 'کاربر جدید'} وارد اتاق شد`, true);
+                updateRoomUI();
+
+                if (isHost) {
+                    const authState = getAuthoritativeState();
+                    send(from, { type: 'room_state', state: authState });
+                    broadcast({ type: 'room_state', state: authState });
                 }
                 break;
-            case 'req_src':
-                sendCurrentMediaState(from);
+            }
+
+            case 'room_state': {
+                if (!data.state) return;
+                const state = data.state;
+                currentRoomState.mode = state.mode || 'cinema';
+                currentRoomState.isLocked = !!state.isLocked;
+
+                if (state.hostId) {
+                    currentRoomState.hostId = state.hostId;
+                    isHost = (state.hostId === myId);
+                }
+
+                if (Array.isArray(state.users)) {
+                    roomMembers.clear();
+                    state.users.forEach(u => roomMembers.set(u.id, u));
+                    if (myProfile) {
+                        const existing = roomMembers.get(myId);
+                        roomMembers.set(myId, {
+                            id: myId,
+                            name: myProfile.name,
+                            avatar: myProfile.avatar,
+                            color: myProfile.color,
+                            isHost: isHost,
+                            canControl: isHost || currentRoomState.mode === 'open' || existing?.canControl,
+                            isMuted: existing?.isMuted || false,
+                            isBuffering: false,
+                            time: existing?.time || 0,
+                            isLive: existing?.isLive !== false
+                        });
+                    }
+                }
+
+                if (state.media && state.media.type && state.media.type !== 'empty') {
+                    if (typeof applyRoomMedia === 'function') applyRoomMedia(state.media);
+                }
+
+                if (state.liveClock && !isHost && isLiveMode) {
+                    if (typeof applyLiveClock === 'function') applyLiveClock(state.liveClock);
+                }
+
+                updateRoomUI();
                 break;
-            case 'load_url':
+            }
+
+            case 'user_presence': {
+                if (!from || from === myId) return;
+                const existing = roomMembers.get(from);
+                if (existing) {
+                    existing.time = data.time || 0;
+                    existing.isBuffering = !!data.isBuffering;
+                    existing.isLive = !!data.isLive;
+                    updateRoomUI();
+                }
+                break;
+            }
+
+            case 'profile_update': {
+                if (!from || from === myId || !data.user) return;
+                const existing = roomMembers.get(from);
+                if (existing) {
+                    existing.name = data.user.name;
+                    existing.avatar = data.user.avatar;
+                    existing.color = data.user.color;
+                    updateRoomUI();
+                }
+                break;
+            }
+
+            case 'admin_action': {
+                if (data.action === 'kick' && data.targetId === myId) {
+                    if (ws) ws.close();
+                    alert('⚠️ شما توسط میزبان از اتاق اخراج شدید.');
+                    window.location.reload();
+                    return;
+                }
+                if (data.action === 'mute' && data.targetId === myId) {
+                    isUserMuted = !!data.muted;
+                    showToast(isUserMuted ? '🔇 شما در چت میوت شدید' : '🔊 دسترسی چت شما باز شد', false);
+                    return;
+                }
+                if (data.action === 'grant_control' && data.targetId === myId) {
+                    canUserControl = !!data.granted;
+                    showToast(canUserControl ? '🎮 به شما دسترسی کنترل پخش داده شد' : 'دسترسی کنترل پخش برداشته شد', false);
+                    return;
+                }
+                if (data.action === 'transfer_host') {
+                    if (data.newHostId === myId) {
+                        isHost = true;
+                        myHostKey = 'hkey_' + randomId() + randomId();
+                        localStorage.setItem(hostStorageKey, myHostKey);
+                        showToast('👑 شما اکنون میزبان این اتاق شدید!', true);
+                    } else if (isHost) {
+                        isHost = false;
+                        localStorage.removeItem(hostStorageKey);
+                        myHostKey = null;
+                        showToast('میزبانی به کاربر دیگر واگذار شد', false);
+                    }
+                    currentRoomState.hostId = data.newHostId;
+                    updateRoomUI();
+                    return;
+                }
+                if (data.action === 'mode_change') {
+                    currentRoomState.mode = data.mode;
+                    showToast(data.mode === 'open' ? 'حالت اتاق: آزاد (همه می‌توانند پخش کنند)' : 'حالت اتاق: سینما (فقط میزبان)', false);
+                    updateRoomUI();
+                    return;
+                }
+                if (data.action === 'lock_change') {
+                    currentRoomState.isLocked = !!data.locked;
+                    showToast(data.locked ? '🔒 ورود به اتاق قفل شد' : '🔓 قفل ورود به اتاق برداشته شد', false);
+                    updateRoomUI();
+                    return;
+                }
+                break;
+            }
+
+            case 'join_rejected': {
+                alert(data.reason || 'ورود به اتاق تایید نشد.');
+                if (ws) ws.close();
+                break;
+            }
+
+            case 'disconnect': {
+                if (from && roomMembers.has(from)) {
+                    const u = roomMembers.get(from);
+                    roomMembers.delete(from);
+                    showToast(`کاربر (${u.name || from.slice(0, 4)}) از اتاق خارج شد`, false);
+                    updateRoomUI();
+                }
+                break;
+            }
+
+            case 'sync_tick': {
+                if (!isHost && isLiveMode && data.clock) {
+                    if (typeof applyLiveClock === 'function') applyLiveClock(data.clock);
+                }
+                break;
+            }
+
+            case 'force_sync': {
+                if (data.clock) {
+                    isLiveMode = true;
+                    if (typeof applyLiveClock === 'function') applyLiveClock(data.clock, true);
+                    showToast('🔴 هماهنگ‌سازی اجباری با زمان میزبان انجام شد', true);
+                }
+                break;
+            }
+
+            case 'room_media': {
+                if (data.media) {
+                    if (typeof applyRoomMedia === 'function') applyRoomMedia(data.media);
+                }
+                break;
+            }
+
+            case 'chat': {
+                if (typeof handleIncomingChatMessage === 'function') {
+                    handleIncomingChatMessage(data, from);
+                }
+                break;
+            }
+
+            case 'reaction': {
+                if (data.emoji && typeof spawnReaction === 'function') {
+                    spawnReaction(data.emoji, data.user);
+                }
+                break;
+            }
+
+            case 'load_url': {
                 switchPlayer(false);
                 if (data.isHls || (data.url && data.url.includes('.m3u8'))) {
                     loadHlsStream(data.url);
@@ -840,21 +1044,17 @@ window.addEventListener('load', () => {
                 }
                 setPlaybackStatus('ویدیو سینک شد');
                 break;
-            case 'load_yt':
+            }
+
+            case 'load_yt': {
                 switchPlayer(true);
                 initYT(data.id);
                 setPlaybackStatus('یوتیوب سینک شد');
                 break;
-            case 'load_sub':
-                subUrlInput.value = data.url;
-                processSubtitleUrl(data.url, false);
-                break;
-            case 'sync_sub_file':
-                // Security DoS protection: Ensure content length is bounded
-                if (!data.content || typeof data.content !== 'string' || data.content.length > 1024 * 1024) {
-                    showToast('⚠️ فایل زیرنویس دریافتی به علت حجم غیرمجاز رد شد', false);
-                    return;
-                }
+            }
+
+            case 'sync_sub_file': {
+                if (!data.content || typeof data.content !== 'string' || data.content.length > 1024 * 1024) return;
                 cleanupSubBlobs();
                 const blob = new Blob([data.content], { type: 'text/vtt' });
                 const blobUrl = URL.createObjectURL(blob);
@@ -863,31 +1063,7 @@ window.addEventListener('load', () => {
                 setPlaybackStatus('زیرنویس همگام شد');
                 showToast(`📝 زیرنویس "${data.name || 'همگام'}" دریافت شد`, false);
                 break;
-            case 'chat':
-                addMsg(data.data, false);
-                notify();
-                if (!isSidebarOpen) {
-                    showToast(data.data.text, false);
-                    unreadCount++;
-                    unreadBadge.textContent = unreadCount;
-                    unreadBadge.classList.remove('hidden');
-                }
-                break;
-            case 'toggle_sync_mode':
-                updateSyncUI(data.auto);
-                showToast(data.auto ? 'دوست: سینک روشن' : 'دوست: سینک آزاد', false);
-                break;
-            case 'sync':
-                partnerTimeDisplay.textContent = formatTime(data.time);
-                if (Date.now() - lastInteractionTime < 500) return;
-
-                if (isAutoSync) syncPlayer(data);
-                else if (data.play !== lastPartnerState.playing) showToast(data.play ? 'دوست پخش کرد' : 'دوست متوقف کرد', false);
-                lastPartnerState.playing = data.play;
-                break;
-            case 'timed_reaction':
-                pendingReactions.push({ emoji: data.emoji, time: data.time, played: false });
-                break;
+            }
         }
     }
 
