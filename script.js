@@ -53,8 +53,11 @@ window.addEventListener('load', () => {
     const reactionArea = $('reaction-area');
     const reactionToggle = $('reaction-toggle-btn');
     const reactionDrawer = $('reaction-drawer');
-    const welcomeModal = $('welcome-modal');
-    const acceptBtn = $('accept-btn');
+    const profileModal = $('profile-modal');
+    const saveProfileBtn = $('save-profile-btn');
+    const closeProfileModalBtn = $('close-profile-modal');
+    const profileNameInput = $('profile-name-input');
+    const profileAvatarPreview = $('profile-avatar-preview');
     const topBar = $('top-bar');
     const tutorialBtn = $('tutorial-btn');
     const tutorialTooltip = $('tutorial-tooltip');
@@ -156,28 +159,108 @@ window.addEventListener('load', () => {
     const DONATE_LINK = 'https://donito.me/parsosa';
     if (donateLinkBtn) donateLinkBtn.href = DONATE_LINK;
 
-    let storedId = localStorage.getItem('syncnema_fixed_id');
-    if (!storedId) {
-        storedId = randomId();
-        localStorage.setItem('syncnema_fixed_id', storedId);
+    function getStoredProfile() {
+        const raw = localStorage.getItem('syncnema_user_profile');
+        if (raw) {
+            try { return JSON.parse(raw); } catch (e) {}
+        }
+        return null;
     }
 
-    let ws, myId = storedId, partnerId = '', isSyncing = false;
-    let pendingPartnerId = null, connTimeout = null;
+    let myProfile = getStoredProfile();
+    let selectedAvatar = myProfile?.avatar || '🍿';
+    let selectedColor = myProfile?.color || '#38bdf8';
+
+    function saveProfile(name, avatar, color) {
+        myProfile = {
+            id: myProfile?.id || randomId(),
+            name: (name || 'تماشاگر').trim() || 'تماشاگر',
+            avatar: avatar || '🍿',
+            color: color || '#38bdf8'
+        };
+        localStorage.setItem('syncnema_user_profile', JSON.stringify(myProfile));
+        updateProfileUI();
+        return myProfile;
+    }
+
+    function updateProfileUI() {
+        if (!myProfile) return;
+        const avatarEl = $('user-avatar-display');
+        const nameEl = $('user-name-display');
+        if (avatarEl) avatarEl.textContent = myProfile.avatar;
+        if (nameEl) nameEl.textContent = myProfile.name;
+    }
+
+    function openProfileModal() {
+        if (myProfile) {
+            profileNameInput.value = myProfile.name;
+            selectedAvatar = myProfile.avatar;
+            selectedColor = myProfile.color;
+            closeProfileModalBtn?.classList.remove('hidden');
+        } else {
+            profileNameInput.value = '';
+            closeProfileModalBtn?.classList.add('hidden');
+        }
+        profileAvatarPreview.textContent = selectedAvatar;
+        updateSelectorStyles();
+        profileModal.classList.remove('hidden');
+        profileModal.style.opacity = '1';
+    }
+
+    function updateSelectorStyles() {
+        document.querySelectorAll('.avatar-option').forEach(btn => {
+            if (btn.dataset.avatar === selectedAvatar) {
+                btn.className = 'avatar-option p-2 rounded-xl text-2xl hover:scale-110 active:scale-95 transition-transform border border-cyan-400 bg-cyan-500/20';
+            } else {
+                btn.className = 'avatar-option p-2 rounded-xl text-2xl hover:scale-110 active:scale-95 transition-transform border border-transparent';
+            }
+        });
+        document.querySelectorAll('.color-option').forEach(btn => {
+            if (btn.dataset.color === selectedColor) {
+                btn.classList.add('border-white', 'scale-110');
+                btn.classList.remove('border-transparent');
+            } else {
+                btn.classList.remove('border-white', 'scale-110');
+                btn.classList.add('border-transparent');
+            }
+        });
+    }
+
+    document.querySelectorAll('.avatar-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectedAvatar = btn.dataset.avatar;
+            profileAvatarPreview.textContent = selectedAvatar;
+            updateSelectorStyles();
+        });
+    });
+
+    document.querySelectorAll('.color-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectedColor = btn.dataset.color;
+            updateSelectorStyles();
+        });
+    });
+
+    closeProfileModalBtn?.addEventListener('click', () => {
+        profileModal.classList.add('hidden');
+    });
+
+    let ws, myId = myProfile?.id || randomId(), isSyncing = false;
+    let partnerId = '', partnerDuration = null;
     let roomPeers = new Set();
-    let partnerDuration = null, hbInterval = null, lastPong = 0;
     let audioCtx, reconnectAttempts = 0, replyingTo = null;
 
-    myIdSpan.textContent = myId;
-
-    // Check if Welcome Modal was previously dismissed
-    if (localStorage.getItem('syncnema_welcome_dismissed') === 'true') {
-        welcomeModal.classList.add('hidden');
+    if (myProfile) {
+        myId = myProfile.id;
+        updateProfileUI();
+        profileModal.classList.add('hidden');
         topBar.classList.remove('blur-sm');
         cinemaContainer.classList.remove('blur-sm');
+    } else {
+        openProfileModal();
+        topBar.classList.add('blur-sm');
+        cinemaContainer.classList.add('blur-sm');
     }
-
-    // Event Listeners for Elements formerly with onclick
 
     // Modals & Navigation
     $('donate-trigger-btn')?.addEventListener('click', () => $('donate-modal').classList.remove('hidden'));
@@ -192,21 +275,26 @@ window.addEventListener('load', () => {
     $('close-tutorial-modal')?.addEventListener('click', () => $('tutorial-modal').classList.add('hidden'));
     $('tutorial-ok-btn')?.addEventListener('click', () => $('tutorial-modal').classList.add('hidden'));
 
-    acceptBtn.onclick = () => {
-        // AUDIO FIX: Init here on user gesture
+    saveProfileBtn.onclick = () => {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        localStorage.setItem('syncnema_welcome_dismissed', 'true');
-        welcomeModal.style.opacity = '0';
+        const name = profileNameInput.value.trim() || 'تماشاگر';
+        saveProfile(name, selectedAvatar, selectedColor);
+
+        profileModal.style.opacity = '0';
         topBar.classList.remove('blur-sm');
         cinemaContainer.classList.remove('blur-sm');
         setTimeout(() => {
-            welcomeModal.classList.add('hidden');
+            profileModal.classList.add('hidden');
             if (!localStorage.getItem('syncnema_tutorial_seen')) {
                 tutorialTooltip.classList.remove('hidden');
             }
         }, 500);
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            broadcast({ type: 'profile_update', user: myProfile });
+        }
     };
 
     dismissLandscape.onclick = () => {
