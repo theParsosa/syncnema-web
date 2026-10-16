@@ -567,18 +567,89 @@ video::cue {
     transform: scale(1.04);
 }
 
-/* Floating Reactions Animation */
-@keyframes floatUp {
-    0% { transform: translateY(0) scale(0.5); opacity: 0; }
-    20% { transform: translateY(-25px) scale(1.2); opacity: 1; }
-    80% { transform: translateY(-100px) scale(1); opacity: 0.85; }
-    100% { transform: translateY(-180px) scale(0.6); opacity: 0; }
+/* Floating Smart Attributed Reactions Animation */
+@keyframes floatSmartPill {
+    0% {
+        transform: translateY(15px) scale(0.6);
+        opacity: 0;
+    }
+    15% {
+        transform: translateY(-20px) scale(1.08);
+        opacity: 1;
+    }
+    30% {
+        transform: translateY(-45px) scale(1);
+        opacity: 0.95;
+    }
+    75% {
+        transform: translateY(-130px) scale(0.96);
+        opacity: 0.85;
+    }
+    100% {
+        transform: translateY(-210px) scale(0.7);
+        opacity: 0;
+    }
 }
+
+.reaction-pill-anim {
+    position: absolute;
+    animation: floatSmartPill 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: none;
+    z-index: 45;
+}
+
+.reaction-pill-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.35rem;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 9999px;
+    box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.65), 0 0 15px rgba(255, 255, 255, 0.05);
+}
+
+.reaction-pill-avatar {
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 1.5px solid;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.reaction-pill-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reaction-pill-emoji {
+    font-size: 1.5rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+.reaction-emoji-only {
+    font-size: 2.75rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+}
+
 .reaction-anim {
     position: absolute;
-    animation: floatUp 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: floatSmartPill 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
-    font-size: 3.2rem;
+    font-size: 3rem;
     filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
     z-index: 45;
 }

@@ -677,14 +677,28 @@ window.addEventListener('load', () => {
         }, 3000);
     }
 
+    function createReactionThrottler(minIntervalMs = 400) {
+        let lastTime = 0;
+        return function canSend() {
+            const now = Date.now();
+            if (now - lastTime >= minIntervalMs) {
+                lastTime = now;
+                return true;
+            }
+            return false;
+        };
+    }
+    const canSendReaction = createReactionThrottler(400);
+
     document.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
+            if (!canSendReaction()) return;
             const emoji = btn.dataset.emoji;
-            spawnReaction(emoji);
-            if (roomPeers.size > 0 || partnerId) {
-                const currentTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
-                broadcast({ type: 'timed_reaction', emoji: emoji, time: currentTime });
+            const user = myProfile || { id: myId, name: 'شما', avatar: '🍿', color: '#38bdf8' };
+            spawnReaction(emoji, user);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                broadcast({ type: 'reaction', emoji: emoji, user: user });
             }
             resetReactionTimer();
         };
@@ -696,14 +710,31 @@ window.addEventListener('load', () => {
         }
     });
 
-    function spawnReaction(emoji) {
+    function spawnReaction(emoji, user = null) {
+        if (!reactionArea) return;
         const el = document.createElement('div');
-        el.textContent = emoji;
-        el.className = 'reaction-anim';
-        el.style.left = (Math.random() * 20 + 5) + '%';
-        el.style.bottom = '20%';
+        el.className = 'reaction-pill-anim pointer-events-none select-none';
+
+        const u = user || { name: '', avatar: '', color: '#38bdf8' };
+
+        if (u.name || u.avatar) {
+            el.innerHTML = `
+                <div class="reaction-pill-content">
+                    <span class="reaction-pill-avatar" style="border-color: ${u.color || '#38bdf8'}">${u.avatar || '🍿'}</span>
+                    <span class="reaction-pill-name" style="color: ${u.color || '#38bdf8'}">${escapeHtml(u.name || '')}</span>
+                    <span class="reaction-pill-emoji">${emoji}</span>
+                </div>
+            `;
+        } else {
+            el.innerHTML = `<span class="reaction-emoji-only">${emoji}</span>`;
+        }
+
+        const leftPercent = Math.floor(Math.random() * 65) + 10;
+        el.style.left = `${leftPercent}%`;
+        el.style.bottom = `${Math.floor(Math.random() * 15) + 15}%`;
+
         reactionArea.appendChild(el);
-        setTimeout(() => el.remove(), 2000);
+        setTimeout(() => el.remove(), 2600);
     }
 
     const emojiBtn = $('emoji-btn');
