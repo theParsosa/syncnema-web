@@ -353,7 +353,7 @@ window.addEventListener('load', () => {
 
     // Share Room Invite Link
     shareRoomBtn?.addEventListener('click', () => {
-        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoomId)}&join=${encodeURIComponent(myId)}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoomId)}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(shareUrl).then(() => {
                 showToast('📋 لینک دعوت به اتاق کپی شد!', true);
@@ -365,13 +365,116 @@ window.addEventListener('load', () => {
         }
     });
 
-    editIdBtn.onclick = () => {
-        const newId = prompt('شناسه یکتای خود را وارد کنید:', myId);
-        if (newId && newId.trim() !== "" && newId !== myId) {
-            localStorage.setItem('syncnema_fixed_id', newId.trim());
-            window.location.reload();
+    if (editIdBtn) {
+        editIdBtn.onclick = () => {
+            const newId = prompt('شناسه یکتای خود را وارد کنید:', myId);
+            if (newId && newId.trim() !== "" && newId !== myId) {
+                localStorage.setItem('syncnema_fixed_id', newId.trim());
+                window.location.reload();
+            }
+        };
+    }
+
+    // Top Bar Island 3 Triggers & Admin Modal
+    const adminModal = $('admin-modal');
+    const adminPanelTrigger = $('admin-panel-trigger');
+    const closeAdminModal = $('close-admin-modal');
+    const userProfileBtn = $('user-profile-btn');
+    const spectatorsTriggerBtn = $('spectators-trigger-btn');
+
+    userProfileBtn?.addEventListener('click', () => {
+        openProfileModal();
+    });
+
+    spectatorsTriggerBtn?.addEventListener('click', () => {
+        toggleSidebar(true);
+        if (typeof switchChatDrawerTab === 'function') {
+            switchChatDrawerTab('spectators');
         }
-    };
+    });
+
+    adminPanelTrigger?.addEventListener('click', () => {
+        if (!isHost) {
+            showToast('⚠️ فقط میزبان اتاق به این پنل دسترسی دارد', false);
+            return;
+        }
+        updateAdminModalUI();
+        adminModal?.classList.remove('hidden');
+    });
+
+    closeAdminModal?.addEventListener('click', () => {
+        adminModal?.classList.add('hidden');
+    });
+
+    // Admin Control Actions
+    const modeCinemaBtn = $('admin-mode-cinema');
+    const modeOpenBtn = $('admin-mode-open');
+
+    function updateAdminModalUI() {
+        if (currentRoomState.mode === 'open') {
+            modeOpenBtn?.classList.add('border-amber-400', 'bg-amber-500/20', 'text-amber-200');
+            modeOpenBtn?.classList.remove('border-transparent', 'text-slate-300');
+            modeCinemaBtn?.classList.remove('border-amber-400', 'bg-amber-500/20', 'text-amber-200');
+            modeCinemaBtn?.classList.add('border-transparent', 'text-slate-300');
+        } else {
+            modeCinemaBtn?.classList.add('border-amber-400', 'bg-amber-500/20', 'text-amber-200');
+            modeCinemaBtn?.classList.remove('border-transparent', 'text-slate-300');
+            modeOpenBtn?.classList.remove('border-amber-400', 'bg-amber-500/20', 'text-amber-200');
+            modeOpenBtn?.classList.add('border-transparent', 'text-slate-300');
+        }
+
+        const lockBtn = $('admin-lock-toggle-btn');
+        if (lockBtn) {
+            if (currentRoomState.isLocked) {
+                lockBtn.innerHTML = '<span>🔒 قفل است</span>';
+                lockBtn.className = 'glass-btn px-4 py-2 rounded-xl text-xs font-bold border border-red-500/50 bg-red-500/20 text-red-200';
+            } else {
+                lockBtn.innerHTML = '<span>🔓 باز است</span>';
+                lockBtn.className = 'glass-btn px-4 py-2 rounded-xl text-xs font-bold border border-white/20 text-slate-300';
+            }
+        }
+    }
+
+    modeCinemaBtn?.addEventListener('click', () => {
+        if (!isHost) return;
+        currentRoomState.mode = 'cinema';
+        broadcast({ type: 'admin_action', action: 'mode_change', mode: 'cinema' });
+        updateAdminModalUI();
+        showToast('🎬 حالت سینما فعال شد (فقط شما کنترل می‌کنید)', true);
+    });
+
+    modeOpenBtn?.addEventListener('click', () => {
+        if (!isHost) return;
+        currentRoomState.mode = 'open';
+        broadcast({ type: 'admin_action', action: 'mode_change', mode: 'open' });
+        updateAdminModalUI();
+        showToast('🔓 حالت آزاد فعال شد (همه دسترسی دارند)', true);
+    });
+
+    $('admin-force-sync-btn')?.addEventListener('click', () => {
+        if (!isHost) return;
+        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
+        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
+        const clock = {
+            time: curTime,
+            playing: isPlaying,
+            rate: rate,
+            timestamp: Date.now()
+        };
+        currentRoomState.liveClock = clock;
+        broadcast({ type: 'force_sync', clock });
+        showToast('🔴 هماهنگ‌سازی اجباری برای همه ارسال شد', true);
+    });
+
+    $('admin-lock-toggle-btn')?.addEventListener('click', () => {
+        if (!isHost) return;
+        const newLocked = !currentRoomState.isLocked;
+        currentRoomState.isLocked = newLocked;
+        broadcast({ type: 'admin_action', action: 'lock_change', locked: newLocked });
+        updateAdminModalUI();
+        showToast(newLocked ? '🔒 اتاق قفل شد' : '🔓 قفل اتاق برداشته شد', true);
+    });
 
     window.addEventListener('beforeunload', () => {
         if (roomPeers.size > 0 || partnerId) {

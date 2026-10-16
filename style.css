@@ -225,11 +225,14 @@ body {
     scrollbar-width: none !important;
 }
 
-/* Force buttons in top-bar to never display text */
-#top-bar button span,
+/* Legacy button labels hiding */
 #sync-toggle-btn span,
 #sync-btn-label {
     display: none !important;
+}
+#user-profile-btn span,
+#spectators-trigger-btn span {
+    display: inline-flex !important;
 }
 
 @media (max-width: 768px), (max-height: 500px) {
