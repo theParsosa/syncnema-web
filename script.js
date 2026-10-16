@@ -1313,6 +1313,13 @@ window.addEventListener('load', () => {
                 showToast(`📝 زیرنویس "${data.name || 'همگام'}" دریافت شد`, false);
                 break;
             }
+
+            case 'load_sub': {
+                if (data.url && typeof processSubtitleUrl === 'function') {
+                    processSubtitleUrl(data.url, false);
+                }
+                break;
+            }
         }
     }
 
@@ -1840,9 +1847,9 @@ window.addEventListener('load', () => {
                 document.getElementById('sub-modal').classList.add('hidden');
                 showToast('✅ فایل زیرنویس بارگذاری شد', true);
 
-                if (roomPeers.size > 0 || partnerId) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
                     broadcast({ type: 'sync_sub_file', content: content, name: f.name });
-                    showToast('زیرنویس برای دوستان ارسال شد', false);
+                    showToast('زیرنویس برای همراهان اتاق ارسال شد', false);
                 }
             };
             reader.readAsArrayBuffer(f);
@@ -1864,10 +1871,14 @@ window.addEventListener('load', () => {
             showToast('✅ در حال بارگذاری یوتیوب...', true);
             switchPlayer(true);
             initYT(videoId);
+            currentRoomState.media = { type: 'yt', ytId: videoId };
+            broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_yt', id: videoId });
         } else if (val.includes('.m3u8')) {
             switchPlayer(false);
             loadHlsStream(val);
+            currentRoomState.media = { type: 'url', url: val, isHls: true };
+            broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: true });
         } else {
             setPlaybackStatus('پخش فایل');
@@ -1880,32 +1891,31 @@ window.addEventListener('load', () => {
                 console.error(e);
                 showToast('⚠️ خطا در پخش. مطمئن شوید لینک مستقیم فایل (mp4/mkv/hls) است.', false);
             });
+            currentRoomState.media = { type: 'url', url: val, isHls: false };
+            broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: false });
         }
     };
 
-    $('connect-btn').onclick = () => {
-        const id = partnerInput.value.trim();
-        if (id && id !== myId) {
-            pendingPartnerId = id;
-            setStatus('در حال اتصال...', 'yellow');
-            send(id, { type: 'conn_req' });
-            if (connTimeout) clearTimeout(connTimeout);
-            connTimeout = setTimeout(() => {
-                if (pendingPartnerId === id && !roomPeers.has(id)) {
-                    pendingPartnerId = null;
-                    connTimeout = null;
-                    setStatus('قطع شد', 'err');
-                    showToast('⚠️ پارتنر پاسخ نداد یا هنوز آنلاین نشده است', false);
-                }
-            }, 10000);
-        }
-    };
+    const legacyConnectBtn = $('connect-btn');
+    if (legacyConnectBtn) {
+        legacyConnectBtn.onclick = () => {
+            const id = partnerInput?.value?.trim();
+            if (id && id !== myId) {
+                pendingPartnerId = id;
+                setStatus('در حال اتصال...', 'yellow');
+                send(id, { type: 'conn_req' });
+            }
+        };
+    }
 
-    $('disconnect-btn').onclick = () => {
-        broadcast({ type: 'disconnect' });
-        resetState();
-    };
+    const legacyDisconnectBtn = $('disconnect-btn');
+    if (legacyDisconnectBtn) {
+        legacyDisconnectBtn.onclick = () => {
+            broadcast({ type: 'disconnect' });
+            resetState();
+        };
+    }
 
     chatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
