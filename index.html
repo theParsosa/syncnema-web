@@ -484,37 +484,58 @@
             </div>
         </div>
 
-        <!-- Floating Frosted Chat Sidebar (Right Drawer) -->
+        <!-- Floating Frosted Chat & Spectators Drawer -->
         <aside id="chat-sidebar"
             class="flex flex-col sidebar-closed shadow-2xl">
-            <div class="p-3.5 border-b border-white/10 flex justify-between items-center bg-white/[0.03] shrink-0 relative z-20">
-                <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                    <h3 class="font-bold text-slate-200 text-sm">اتاق گفتگو</h3>
+            <!-- Two Tabs Header -->
+            <div class="px-3 py-2 border-b border-white/10 flex justify-between items-center bg-white/[0.04] shrink-0 relative z-20">
+                <div class="flex items-center gap-1 p-0.5 bg-black/40 rounded-xl border border-white/10" id="chat-drawer-tabs">
+                    <button type="button" id="tab-btn-chat" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-500/30 text-cyan-200 border border-cyan-400/30 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <span>گفتگو</span>
+                    </button>
+                    <button type="button" id="tab-btn-spectators" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white flex items-center gap-1.5 border border-transparent">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span>حاضرین</span>
+                        <span class="spectators-count-badge bg-white/10 px-1.5 py-0.2 rounded-full text-[10px] font-mono">1</span>
+                    </button>
                 </div>
                 <button id="close-sidebar-btn"
-                    class="glass-btn w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-white text-lg transition-colors">&times;</button>
+                    class="glass-btn w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-white text-lg transition-colors"
+                    title="بستن">&times;</button>
             </div>
 
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 flex flex-col relative"></div>
-            <div id="reply-preview"
-                class="bg-white/5 backdrop-blur-md p-2.5 text-xs text-slate-300 hidden flex justify-between border-t border-white/10 rounded-xl mx-2 my-1">
-            </div>
-            <div class="px-3.5 py-3 border-t border-white/10 bg-white/[0.02] relative shrink-0">
-                <div class="flex items-center gap-2">
-                    <button id="emoji-btn" class="glass-btn w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 shrink-0" title="ایموجی">
-                        <svg class="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                    </button>
-                    <input id="chat-input" type="text"
-                        class="glass-input flex-1 min-w-0 rounded-full px-3.5 py-1.5 text-sm focus:border-cyan-400 outline-none text-right placeholder-slate-500"
-                        placeholder="ارسال پیام..." autocomplete="off">
-                    <button id="chat-send"
-                        class="glass-btn glass-btn-primary px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shrink-0">
-                        <span>ارسال</span>
-                        <svg class="w-3.5 h-3.5 transform -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
+            <!-- Tab 1: Chat Pane -->
+            <div id="chat-pane" class="flex-1 flex flex-col min-h-0 relative">
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 flex flex-col relative space-y-2"></div>
+                <div id="reply-preview"
+                    class="bg-white/5 backdrop-blur-md p-2.5 text-xs text-slate-300 hidden flex justify-between border-t border-white/10 rounded-xl mx-2 my-1">
                 </div>
-                <emoji-picker class="light" style="display:none;"></emoji-picker>
+                <div class="px-3.5 py-2.5 border-t border-white/10 bg-white/[0.02] relative shrink-0">
+                    <div class="flex items-center gap-2">
+                        <button id="emoji-btn" class="glass-btn w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 shrink-0" title="ایموجی">
+                            <svg class="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                        </button>
+                        <input id="chat-input" type="text"
+                            class="glass-input flex-1 min-w-0 rounded-full px-3.5 py-2 text-sm focus:border-cyan-400 outline-none text-right placeholder-slate-500"
+                            placeholder="ارسال پیام..." autocomplete="off">
+                        <button id="chat-send"
+                            class="glass-btn glass-btn-primary px-3 py-2 rounded-full text-xs font-bold flex items-center gap-1 shrink-0">
+                            <span>ارسال</span>
+                            <svg class="w-3.5 h-3.5 transform -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                    <emoji-picker class="light" style="display:none;"></emoji-picker>
+                </div>
+            </div>
+
+            <!-- Tab 2: Spectators Pane -->
+            <div id="spectators-pane" class="flex-1 flex flex-col min-h-0 hidden relative">
+                <div class="px-3.5 py-2 text-[11px] text-slate-400 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                    <span>تماشاگران حاضر در اتاق</span>
+                    <span class="text-cyan-400 font-mono"><span class="spectators-count-badge">1</span> نفر</span>
+                </div>
+                <div id="spectators-list" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
             </div>
         </aside>
     </main>

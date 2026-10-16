@@ -1417,9 +1417,52 @@ window.addEventListener('load', () => {
         }
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function addMsg(data, isMe) {
         const div = document.createElement('div');
-        div.className = `p-2.5 rounded-2xl text-sm break-words relative group mb-2.5 border backdrop-blur-md shadow-sm transition-all ${isMe ? 'bg-cyan-500/20 border-cyan-400/30 text-cyan-50 ml-4 rounded-br-sm' : 'bg-white/10 border-white/10 text-slate-100 mr-4 rounded-bl-sm'}`;
+        div.className = `p-2.5 rounded-2xl text-sm break-words relative group mb-2 border backdrop-blur-md shadow-sm transition-all ${
+            isMe 
+                ? 'bg-cyan-500/20 border-cyan-400/30 text-cyan-50 mr-4 rounded-br-sm' 
+                : 'bg-white/[0.08] border-white/10 text-slate-100 ml-4 rounded-bl-sm'
+        }`;
+
+        // Header for sender identity
+        if (!isMe) {
+            const senderHeader = document.createElement('div');
+            senderHeader.className = 'flex items-center gap-1.5 mb-1';
+            
+            const avatarSpan = document.createElement('span');
+            avatarSpan.className = 'text-xs';
+            avatarSpan.textContent = data.userAvatar || '🍿';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'font-bold text-xs truncate';
+            nameSpan.style.color = data.userColor || '#38bdf8';
+            nameSpan.textContent = data.userName || 'تماشاگر';
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'text-[10px] text-slate-400 mr-auto font-mono';
+            timeSpan.textContent = data.time || '';
+
+            senderHeader.appendChild(avatarSpan);
+            senderHeader.appendChild(nameSpan);
+            senderHeader.appendChild(timeSpan);
+            div.appendChild(senderHeader);
+        } else if (data.time) {
+            const timeSpan = document.createElement('div');
+            timeSpan.className = 'text-[10px] text-cyan-300/70 text-left font-mono mb-0.5';
+            timeSpan.textContent = data.time;
+            div.appendChild(timeSpan);
+        }
 
         if (data.reply) {
             const r = document.createElement('div');
@@ -1429,7 +1472,10 @@ window.addEventListener('load', () => {
             div.appendChild(r);
         }
 
-        renderMsgWithTimestamps(div, data.text);
+        const textBody = document.createElement('div');
+        textBody.className = 'leading-relaxed select-text';
+        renderMsgWithTimestamps(textBody, data.text || '');
+        div.appendChild(textBody);
         div.id = data.id;
 
         const repBtn = document.createElement('button');
@@ -1438,10 +1484,9 @@ window.addEventListener('load', () => {
         repBtn.onclick = () => {
             replyingTo = { id: data.id, txt: data.text };
 
-            // SECURITY FIX: Safe innerHTML usage or DOM methods
             replyPreview.innerHTML = '';
             const spanText = document.createElement('span');
-            spanText.textContent = `پاسخ: ${data.text.substr(0, 15)}...`;
+            spanText.textContent = `پاسخ به ${data.userName || 'پیام'}: ${data.text.substr(0, 15)}...`;
             replyPreview.appendChild(spanText);
 
             const cancelBtn = document.createElement('span');
@@ -1467,13 +1512,212 @@ window.addEventListener('load', () => {
     }
 
     $('chat-send').onclick = () => {
+        if (isUserMuted) {
+            showToast('🔇 شما توسط میزبان در چت میوت شده‌اید', false);
+            return;
+        }
         const txt = chatInput.value.trim();
         if (!txt) return;
-        const msg = { text: txt, id: 'm' + Date.now(), reply: replyingTo };
+
+        const msg = {
+            id: 'm_' + Date.now() + Math.random().toString(36).substring(2, 6),
+            userId: myId,
+            userName: myProfile?.name || 'تماشاگر',
+            userAvatar: myProfile?.avatar || '🍿',
+            userColor: myProfile?.color || '#38bdf8',
+            text: txt,
+            reply: replyingTo,
+            time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+        };
         addMsg(msg, true);
         broadcast({ type: 'chat', data: msg });
-        chatInput.value = ''; replyingTo = null; replyPreview.classList.add('hidden'); chatInput.focus();
+        chatInput.value = '';
+        replyingTo = null;
+        replyPreview.classList.add('hidden');
+        chatInput.focus();
     };
+
+    function handleIncomingChatMessage(data, from) {
+        const payload = data.data || data;
+        if (!payload || !payload.text) return;
+        addMsg(payload, false);
+        if (!isSidebarOpen) {
+            unreadCount++;
+            unreadBadge.textContent = unreadCount;
+            unreadBadge.classList.remove('hidden');
+            notify();
+            showToast(`💬 ${payload.userName || 'پیام'}: ${payload.text.substring(0, 20)}...`, false);
+        }
+    }
+
+    function switchChatDrawerTab(tabName) {
+        const chatPane = $('chat-pane');
+        const spectatorsPane = $('spectators-pane');
+        const tabChat = $('tab-btn-chat');
+        const tabSpec = $('tab-btn-spectators');
+        if (!chatPane || !spectatorsPane) return;
+
+        if (tabName === 'spectators') {
+            chatPane.classList.add('hidden');
+            spectatorsPane.classList.remove('hidden');
+            tabSpec?.classList.add('bg-cyan-500/30', 'text-cyan-200', 'border-cyan-400/30');
+            tabSpec?.classList.remove('text-slate-400', 'border-transparent');
+            tabChat?.classList.remove('bg-cyan-500/30', 'text-cyan-200', 'border-cyan-400/30');
+            tabChat?.classList.add('text-slate-400', 'border-transparent');
+            updateSpectatorsList();
+        } else {
+            spectatorsPane.classList.add('hidden');
+            chatPane.classList.remove('hidden');
+            tabChat?.classList.add('bg-cyan-500/30', 'text-cyan-200', 'border-cyan-400/30');
+            tabChat?.classList.remove('text-slate-400', 'border-transparent');
+            tabSpec?.classList.remove('bg-cyan-500/30', 'text-cyan-200', 'border-cyan-400/30');
+            tabSpec?.classList.add('text-slate-400', 'border-transparent');
+        }
+    }
+
+    $('tab-btn-chat')?.addEventListener('click', () => switchChatDrawerTab('chat'));
+    $('tab-btn-spectators')?.addEventListener('click', () => switchChatDrawerTab('spectators'));
+
+    function updateSpectatorsList() {
+        const listEl = $('spectators-list');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        roomMembers.forEach((user, id) => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/5 backdrop-blur-sm gap-2';
+
+            const leftInfo = document.createElement('div');
+            leftInfo.className = 'flex items-center gap-2.5 min-w-0';
+
+            const avatarWrap = document.createElement('div');
+            avatarWrap.className = 'w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0 border relative';
+            avatarWrap.style.borderColor = user.color || '#38bdf8';
+            avatarWrap.style.backgroundColor = `${user.color || '#38bdf8'}15`;
+            avatarWrap.textContent = user.avatar || '🍿';
+
+            const textWrap = document.createElement('div');
+            textWrap.className = 'min-w-0 flex flex-col';
+
+            const nameRow = document.createElement('div');
+            nameRow.className = 'flex items-center gap-1.5';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'text-xs font-bold text-slate-100 truncate';
+            nameSpan.textContent = user.name || (id === myId ? 'شما' : 'تماشاگر');
+            if (id === myId) {
+                const youBadge = document.createElement('span');
+                youBadge.className = 'text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1 py-0.2 rounded-md font-normal';
+                youBadge.textContent = 'شما';
+                nameRow.appendChild(nameSpan);
+                nameRow.appendChild(youBadge);
+            } else {
+                nameRow.appendChild(nameSpan);
+            }
+
+            if (user.isHost) {
+                const hostBadge = document.createElement('span');
+                hostBadge.className = 'text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-md flex items-center gap-0.5';
+                hostBadge.innerHTML = '👑 <span>میزبان</span>';
+                nameRow.appendChild(hostBadge);
+            }
+
+            const statusRow = document.createElement('div');
+            statusRow.className = 'flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5';
+            if (user.isBuffering) {
+                statusRow.innerHTML = '<span class="text-amber-400 flex items-center gap-1"><span class="animate-spin">⏳</span> در حال بافر...</span>';
+            } else if (user.isLive) {
+                statusRow.innerHTML = '<span class="text-green-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> لایو</span>';
+            } else {
+                statusRow.innerHTML = '<span class="text-slate-400 font-mono">تماشای مستقل</span>';
+            }
+
+            textWrap.appendChild(nameRow);
+            textWrap.appendChild(statusRow);
+
+            leftInfo.appendChild(avatarWrap);
+            leftInfo.appendChild(textWrap);
+            item.appendChild(leftInfo);
+
+            // Admin Action Buttons (Only visible to Host for other users)
+            if (isHost && id !== myId) {
+                const actionsWrap = document.createElement('div');
+                actionsWrap.className = 'flex items-center gap-1 shrink-0';
+
+                // Toggle Control Button
+                const ctrlBtn = document.createElement('button');
+                ctrlBtn.type = 'button';
+                ctrlBtn.className = `glass-btn p-1.5 rounded-lg text-xs hover:scale-105 transition-transform ${user.canControl ? 'text-green-400 border-green-500/40 bg-green-500/10' : 'text-slate-400'}`;
+                ctrlBtn.title = user.canControl ? 'پس گرفتن دسترسی کنترل پخش' : 'اعطای دسترسی کنترل پخش';
+                ctrlBtn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line><rect x="2" y="6" width="20" height="12" rx="2"></rect></svg>';
+                ctrlBtn.onclick = () => {
+                    const newCtrl = !user.canControl;
+                    user.canControl = newCtrl;
+                    send(id, { type: 'admin_action', action: 'grant_control', targetId: id, granted: newCtrl });
+                    showToast(newCtrl ? `🎮 دسترسی کنترل به ${user.name} داده شد` : `دسترسی کنترل ${user.name} برداشته شد`, true);
+                    updateSpectatorsList();
+                };
+                actionsWrap.appendChild(ctrlBtn);
+
+                // Toggle Mute Button
+                const muteBtn = document.createElement('button');
+                muteBtn.type = 'button';
+                muteBtn.className = `glass-btn p-1.5 rounded-lg text-xs hover:scale-105 transition-transform ${user.isMuted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'text-slate-400'}`;
+                muteBtn.title = user.isMuted ? 'رفع میوت چت' : 'میوت کردن در چت';
+                muteBtn.innerHTML = user.isMuted
+                    ? '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>'
+                    : '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+                muteBtn.onclick = () => {
+                    const newMuted = !user.isMuted;
+                    user.isMuted = newMuted;
+                    send(id, { type: 'admin_action', action: 'mute', targetId: id, muted: newMuted });
+                    showToast(newMuted ? `🔇 کاربر ${user.name} در چت میوت شد` : `🔊 کاربر ${user.name} رفع میوت شد`, true);
+                    updateSpectatorsList();
+                };
+                actionsWrap.appendChild(muteBtn);
+
+                // Transfer Host Button
+                const crownBtn = document.createElement('button');
+                crownBtn.type = 'button';
+                crownBtn.className = 'glass-btn p-1.5 rounded-lg text-xs text-amber-400 hover:scale-105 transition-transform';
+                crownBtn.title = 'واگذاری میزبانی به این کاربر';
+                crownBtn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path></svg>';
+                crownBtn.onclick = () => {
+                    if (confirm(`آیا مطمئن هستید می‌خواهید میزبانی اتاق را به ${user.name} واگذار کنید؟`)) {
+                        broadcast({ type: 'admin_action', action: 'transfer_host', newHostId: id });
+                        isHost = false;
+                        localStorage.removeItem(hostStorageKey);
+                        myHostKey = null;
+                        currentRoomState.hostId = id;
+                        user.isHost = true;
+                        updateRoomUI();
+                        showToast(`👑 میزبانی اتاق به ${user.name} واگذار شد`, true);
+                    }
+                };
+                actionsWrap.appendChild(crownBtn);
+
+                // Kick Button
+                const kickBtn = document.createElement('button');
+                kickBtn.type = 'button';
+                kickBtn.className = 'glass-btn p-1.5 rounded-lg text-xs text-red-400 hover:bg-red-500/20 hover:scale-105 transition-transform';
+                kickBtn.title = 'اخراج کاربر از اتاق';
+                kickBtn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>';
+                kickBtn.onclick = () => {
+                    if (confirm(`آیا مطمئنید می‌خواهید ${user.name} را از اتاق اخراج کنید؟`)) {
+                        send(id, { type: 'admin_action', action: 'kick', targetId: id });
+                        roomMembers.delete(id);
+                        showToast(`🚫 کاربر ${user.name} اخراج شد`, true);
+                        updateRoomUI();
+                    }
+                };
+                actionsWrap.appendChild(kickBtn);
+
+                item.appendChild(actionsWrap);
+            }
+
+            listEl.appendChild(item);
+        });
+    }
 
     function notify() {
         if (audioCtx && audioCtx.state === 'running') {
