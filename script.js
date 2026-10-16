@@ -725,6 +725,121 @@ window.addEventListener('load', () => {
         liveClock: { time: 0, playing: false, rate: 1, timestamp: Date.now() }
     };
 
+    let latestHostClock = null;
+
+    function calculateDesync(localTime, hostTime, hostTimestamp, rtt = 100) {
+        const elapsed = (Date.now() - hostTimestamp) / 1000;
+        const currentHostLive = hostTime + elapsed;
+        const diff = localTime - currentHostLive;
+        const isDetached = Math.abs(diff) > 2.5;
+        return { isDetached, diff: Math.round(diff), currentHostLive };
+    }
+
+    function canControlPlayback() {
+        return isHost || canUserControl || currentRoomState.mode === 'open';
+    }
+
+    function updateCatchUpUI(isDetached, diffSec) {
+        const catchUpBtn = $('catch-up-btn');
+        const catchUpText = $('catch-up-text');
+        if (!catchUpBtn || !catchUpText) return;
+
+        if (isDetached && !isHost) {
+            catchUpBtn.classList.remove('hidden');
+            const sign = diffSec < 0 ? '-' : '+';
+            const absDiff = Math.abs(diffSec);
+            const formatted = formatTime(absDiff);
+            catchUpText.textContent = `🔴 بازگشت به لایو ادمین (${sign}${formatted})`;
+        } else {
+            catchUpBtn.classList.add('hidden');
+        }
+    }
+
+    function applyLiveClock(clock, force = false) {
+        if (!clock || isHost) return;
+        latestHostClock = clock;
+
+        const now = Date.now();
+        const elapsed = Math.max(0, (now - (clock.timestamp || now)) / 1000);
+        const hostLiveTime = clock.playing ? clock.time + (elapsed * (clock.rate || 1)) : clock.time;
+
+        const currentLocalTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+        const isLocalPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
+        const drift = currentLocalTime - hostLiveTime;
+
+        if (force || isLiveMode) {
+            if (force || Math.abs(drift) > 2.0) {
+                ignoreSyncUntil = Date.now() + 1500;
+                if (isYouTubeMode && ytPlayer?.seekTo) {
+                    ytPlayer.seekTo(Math.max(0, hostLiveTime), true);
+                } else {
+                    videoPlayer.currentTime = Math.max(0, hostLiveTime);
+                }
+            }
+
+            if (clock.playing && !isLocalPlaying) {
+                ignoreSyncUntil = Date.now() + 1500;
+                if (isYouTubeMode && ytPlayer?.playVideo) ytPlayer.playVideo();
+                else videoPlayer.play().catch(() => {});
+                setPlaybackStatus('پخش لایو');
+            } else if (!clock.playing && isLocalPlaying) {
+                ignoreSyncUntil = Date.now() + 1500;
+                if (isYouTubeMode && ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+                else videoPlayer.pause();
+                setPlaybackStatus('توقف لایو');
+            }
+
+            updateCatchUpUI(false, 0);
+        } else {
+            updateCatchUpUI(true, Math.round(drift));
+        }
+    }
+
+    function broadcastLiveClock() {
+        if (!canControlPlayback()) return;
+        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
+        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
+        const clock = {
+            time: curTime,
+            playing: isPlaying,
+            rate: rate,
+            timestamp: Date.now()
+        };
+        currentRoomState.liveClock = clock;
+        broadcast({ type: 'sync_tick', clock });
+    }
+
+    function applyRoomMedia(media) {
+        if (!media || !media.type) return;
+        currentRoomState.media = media;
+        if (media.type === 'yt' && media.ytId) {
+            switchPlayer(true);
+            initYT(media.ytId);
+        } else if (media.type === 'url' && media.url) {
+            switchPlayer(false);
+            if (media.isHls || (media.url && media.url.includes('.m3u8'))) {
+                loadHlsStream(media.url);
+            } else {
+                cleanupVideoBlob();
+                videoPlayer.src = media.url;
+                videoPlayer.play().catch(() => {});
+            }
+        }
+    }
+
+    const catchUpBtn = $('catch-up-btn');
+    if (catchUpBtn) {
+        catchUpBtn.onclick = () => {
+            isLiveMode = true;
+            if (latestHostClock) {
+                applyLiveClock(latestHostClock, true);
+            }
+            updateCatchUpUI(false, 0);
+            showToast('🔴 به پخش زنده میزبان متصل شدید', true);
+        };
+    }
+
     function getAuthoritativeState() {
         return {
             ...currentRoomState,
@@ -1455,28 +1570,42 @@ window.addEventListener('load', () => {
     });
 
     function seekRelative(delta) {
-        if (isYouTubeMode && ytPlayer?.getCurrentTime) {
-            const cur = ytPlayer.getCurrentTime();
-            ytPlayer.seekTo(Math.max(0, cur + delta), true);
-            sendSync();
+        if (canControlPlayback()) {
+            if (isYouTubeMode && ytPlayer?.getCurrentTime) {
+                const cur = ytPlayer.getCurrentTime();
+                ytPlayer.seekTo(Math.max(0, cur + delta), true);
+            } else {
+                videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime + delta);
+            }
+            broadcastLiveClock();
         } else {
-            videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime + delta);
-            sendSync();
+            isLiveMode = false;
+            if (isYouTubeMode && ytPlayer?.getCurrentTime) {
+                const cur = ytPlayer.getCurrentTime();
+                ytPlayer.seekTo(Math.max(0, cur + delta), true);
+            } else {
+                videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime + delta);
+            }
+            if (latestHostClock) {
+                const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+                const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
+                updateCatchUpUI(true, res.diff);
+            }
         }
     }
 
-    // Buffer Lock / Waiting Event Listeners
+    // Buffer State Event Listeners
     videoPlayer.addEventListener('waiting', () => {
-        if (!isLocalBuffering && (roomPeers.size > 0 || partnerId)) {
+        if (!isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
             isLocalBuffering = true;
-            broadcast({ type: 'buffering', status: true, fromUser: myId });
+            broadcast({ type: 'user_presence', time: videoPlayer.currentTime, isBuffering: true, isLive: isLiveMode });
         }
     });
 
     const handleBufferEnd = () => {
-        if (isLocalBuffering && (roomPeers.size > 0 || partnerId)) {
+        if (isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
             isLocalBuffering = false;
-            broadcast({ type: 'buffering', status: false, fromUser: myId });
+            broadcast({ type: 'user_presence', time: videoPlayer.currentTime, isBuffering: false, isLive: isLiveMode });
         }
     };
     videoPlayer.addEventListener('playing', handleBufferEnd);
@@ -1484,18 +1613,43 @@ window.addEventListener('load', () => {
 
     // Watchdog & Periodic Sync loop
     setInterval(() => {
-        if (!isYouTubeMode && partnerDuration && Math.abs(videoPlayer.duration - partnerDuration) > 5) {
-            warningDiv.classList.remove('hidden');
-        } else {
-            warningDiv.classList.add('hidden');
-        }
+        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
+        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
 
-        if ((roomPeers.size > 0 || partnerId) && !isSyncing && Date.now() > ignoreSyncUntil) {
-            if ((!isYouTubeMode && !videoPlayer.paused) || (isYouTubeMode && ytPlayer?.getPlayerState && ytPlayer.getPlayerState() === 1)) {
-                sendSync();
+        if (isHost) {
+            const clock = {
+                time: curTime,
+                playing: isPlaying,
+                rate: rate,
+                timestamp: Date.now()
+            };
+            currentRoomState.liveClock = clock;
+            broadcast({ type: 'sync_tick', clock });
+        } else if (latestHostClock) {
+            const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
+            if (!isLiveMode) {
+                updateCatchUpUI(true, res.diff);
+            } else if (res.isDetached) {
+                applyLiveClock(latestHostClock, false);
+            } else {
+                updateCatchUpUI(false, 0);
             }
         }
     }, 1000);
+
+    // Regular Presence Broadcast (every 2.5s)
+    setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+            broadcast({
+                type: 'user_presence',
+                time: curTime,
+                isBuffering: isLocalBuffering,
+                isLive: isLiveMode
+            });
+        }
+    }, 2500);
 
     // High precision reaction loop
     setInterval(() => {
@@ -1515,7 +1669,18 @@ window.addEventListener('load', () => {
     const trackInteraction = () => {
         if (Date.now() < ignoreSyncUntil) return;
         lastInteractionTime = Date.now();
-        sendSync();
+        if (canControlPlayback()) {
+            broadcastLiveClock();
+        } else {
+            isLiveMode = false;
+            if (latestHostClock) {
+                const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+                const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
+                updateCatchUpUI(true, res.diff);
+            } else {
+                updateCatchUpUI(true, 0);
+            }
+        }
     };
 
     // Connect to signaling server once all listeners & handlers are ready

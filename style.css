@@ -443,6 +443,12 @@ body {
     z-index: 60;
 }
 
+:fullscreen #catch-up-btn,
+.is-fullscreen #catch-up-btn {
+    bottom: 5.5rem !important;
+    z-index: 60 !important;
+}
+
 @media (max-width: 768px), (max-height: 500px) {
     :fullscreen #right-floating-controls,
     .is-fullscreen #right-floating-controls {
