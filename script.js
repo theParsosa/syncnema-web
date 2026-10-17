@@ -297,6 +297,9 @@ function initSyncnemaApp() {
     const statusText = $('status-text');
     const connectionDot = $('connection-dot');
     const statusContainer = $('status-container');
+    const m3StatusText = $('m3-status-text');
+    const m3ConnectionDot = $('m3-connection-dot');
+    const m3StatusContainer = $('m3-status-container');
     let statusHideTimer = null;
     const playbackBadge = $('playback-status-badge');
     const bufferBadge = $('buffer-waiting-badge');
@@ -1153,23 +1156,57 @@ function initSyncnemaApp() {
     }
 
     function setStatus(msg, type) {
-        statusText.textContent = msg;
-        connectionDot.className = 'pulse-dot';
+        if (statusText) statusText.textContent = msg;
+        if (m3StatusText) m3StatusText.textContent = msg;
+
+        let dotClass = 'pulse-dot';
         if (type === 'ok') {
-            connectionDot.className = 'pulse-dot st-green';
-            statusText.classList.remove('text-cyan-400');
+            dotClass = 'pulse-dot st-green';
+            if (statusText) statusText.classList.remove('text-cyan-400');
+            if (m3StatusText) {
+                m3StatusText.classList.remove('text-cyan-400', 'text-amber-400', 'text-rose-400');
+                m3StatusText.classList.add('text-emerald-400');
+            }
         } else if (type === 'con') {
-            connectionDot.className = 'pulse-dot st-blue';
-            statusText.classList.add('text-cyan-400');
+            dotClass = 'pulse-dot st-blue';
+            if (statusText) statusText.classList.add('text-cyan-400');
+            if (m3StatusText) {
+                m3StatusText.classList.remove('text-emerald-400', 'text-amber-400', 'text-rose-400');
+                m3StatusText.classList.add('text-cyan-400');
+            }
         } else if (type === 'yellow') {
-            connectionDot.className = 'pulse-dot st-yellow';
+            dotClass = 'pulse-dot st-yellow';
+            if (statusText) statusText.classList.remove('text-cyan-400');
+            if (m3StatusText) {
+                m3StatusText.classList.remove('text-emerald-400', 'text-cyan-400', 'text-rose-400');
+                m3StatusText.classList.add('text-amber-400');
+            }
         } else {
-            connectionDot.className = 'pulse-dot st-red';
-            statusText.classList.remove('text-cyan-400');
+            dotClass = 'pulse-dot st-red';
+            if (statusText) statusText.classList.remove('text-cyan-400');
+            if (m3StatusText) {
+                m3StatusText.classList.remove('text-emerald-400', 'text-cyan-400', 'text-amber-400');
+                m3StatusText.classList.add('text-rose-400');
+            }
         }
+
+        if (connectionDot) connectionDot.className = dotClass;
+        if (m3ConnectionDot) m3ConnectionDot.className = dotClass;
+
         if (statusContainer) {
             statusContainer.title = `وضعیت: ${msg} (برای نمایش/پنهان‌سازی کلیک کنید)`;
         }
+        if (m3StatusContainer) {
+            m3StatusContainer.title = `وضعیت اتصال: ${msg}`;
+        }
+    }
+
+    if (m3StatusContainer) {
+        m3StatusContainer.onclick = () => {
+            if (typeof showToast === 'function') {
+                showToast(`وضعیت اتصال: ${m3StatusText?.textContent || 'متصل'}`, false);
+            }
+        };
     }
 
     if (statusContainer) {
@@ -1319,8 +1356,23 @@ function initSyncnemaApp() {
             isProgrammaticSync = true;
             ignoreSyncUntil = Date.now() + 3000;
 
-            if (force || Math.abs(drift) > 2.0) {
-                setPlayerTime(Math.max(0, hostLiveTime));
+            if (force || !clock.playing || Math.abs(drift) > 3.0) {
+                if (force || Math.abs(drift) > 0.5) {
+                    setPlayerTime(Math.max(0, hostLiveTime));
+                }
+                setPlayerPlaybackRate(clock.rate || 1.0);
+            } else if (clock.playing && isLocalPlaying && Math.abs(drift) > 0.8) {
+                // Smooth drift compensation via micro-adjustment without freezing video decoding
+                const baseRate = clock.rate || 1.0;
+                if (drift < 0) {
+                    setPlayerPlaybackRate(Math.min(2.0, baseRate * 1.07));
+                } else {
+                    setPlayerPlaybackRate(Math.max(0.5, baseRate * 0.93));
+                }
+            } else if (clock.playing && isLocalPlaying) {
+                if (getPlayerPlaybackRate() !== (clock.rate || 1.0)) {
+                    setPlayerPlaybackRate(clock.rate || 1.0);
+                }
             }
 
             if (clock.playing && !isLocalPlaying) {
@@ -1424,17 +1476,76 @@ function initSyncnemaApp() {
         if (typeof updateSpectatorsList === 'function') {
             updateSpectatorsList();
         }
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            if (count > 1) {
+                setStatus(`اتاق (${count} نفر)`, 'con');
+            } else {
+                setStatus('متصل به اتاق', 'ok');
+            }
+        }
+    }
+
+    const outboxQueue = [];
+
+    function flushOutbox() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        while (outboxQueue.length > 0) {
+            const item = outboxQueue.shift();
+            try {
+                ws.send(JSON.stringify(item));
+            } catch (e) {
+                console.error('Failed to flush outbox item', e);
+            }
+        }
+    }
+
+    function isEssentialSignal(data) {
+        if (!data || !data.type) return false;
+        const essentialTypes = [
+            'chat',
+            'reaction',
+            'admin_action',
+            'room_media',
+            'sync_sub_file',
+            'load_sub',
+            'load_url',
+            'load_yt',
+            'profile_update',
+            'join_room',
+            'request_sync'
+        ];
+        return essentialTypes.includes(data.type);
     }
 
     function send(to, data) {
-        if (ws && ws.readyState === WebSocket.OPEN && to) {
-            ws.send(JSON.stringify({ type: 'signal', to, data }));
+        if (!to) return;
+        const msg = { type: 'signal', to, data };
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify(msg));
+            } catch (e) {
+                if (isEssentialSignal(data)) outboxQueue.push(msg);
+            }
+        } else {
+            if (isEssentialSignal(data)) {
+                outboxQueue.push(msg);
+            }
         }
     }
 
     function broadcast(data) {
+        const msg = { type: 'signal', data };
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'signal', data }));
+            try {
+                ws.send(JSON.stringify(msg));
+            } catch (e) {
+                if (isEssentialSignal(data)) outboxQueue.push(msg);
+            }
+        } else {
+            if (isEssentialSignal(data)) {
+                outboxQueue.push(msg);
+            }
         }
     }
 
@@ -1449,84 +1560,141 @@ function initSyncnemaApp() {
         }, 15000);
     }
 
+    function safeCloseWs(socket) {
+        if (!socket) return;
+        try {
+            socket.onopen = null;
+            socket.onclose = null;
+            socket.onerror = null;
+            socket.onmessage = null;
+            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                socket.close();
+            }
+        } catch (e) {}
+    }
+
+    let reconnectTimer = null;
+    let connTimeoutTimer = null;
+
+    function scheduleReconnect(delay) {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+        }, delay);
+    }
+
     function connect() {
-        if (ws && ws.readyState === WebSocket.OPEN) return;
-        if (ws && ws.readyState === WebSocket.CONNECTING) return;
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
 
         if (ws) {
-            try { ws.close(); } catch (e) {}
+            safeCloseWs(ws);
+            ws = null;
         }
 
         setStatus('در حال اتصال...', 'yellow');
 
         let isOpened = false;
-        const connTimer = setTimeout(() => {
+        if (connTimeoutTimer) clearTimeout(connTimeoutTimer);
+        connTimeoutTimer = setTimeout(() => {
             if (!isOpened && ws && ws.readyState === WebSocket.CONNECTING) {
                 console.warn('WebSocket connection timed out (7s). Retrying...');
-                try { ws.close(); } catch (e) {}
+                safeCloseWs(ws);
+                ws = null;
                 const delay = Math.min(3000, 1000 + (500 * reconnectAttempts++));
                 setStatus('تلاش مجدد اتصال...', 'yellow');
-                setTimeout(connect, delay);
+                scheduleReconnect(delay);
             }
         }, 7000);
 
-        ws = new WebSocket(getWsUrl());
-        ws.onopen = () => {
-            isOpened = true;
-            clearTimeout(connTimer);
-            ws.send(JSON.stringify({ type: 'register', id: myId }));
-            reconnectAttempts = 0;
-            setStatus('متصل به اتاق', 'ok');
-            startWsHeartbeat();
+        try {
+            const socket = new WebSocket(getWsUrl());
+            ws = socket;
 
-            roomMembers.set(myId, {
-                id: myId,
-                name: myProfile?.name || 'تماشاگر',
-                avatar: myProfile?.avatar || '🍿',
-                color: myProfile?.color || '#38bdf8',
-                isHost: isHost,
-                canControl: isHost,
-                isMuted: false,
-                isBuffering: false,
-                time: 0,
-                isLive: true
-            });
-
-            broadcast({
-                type: 'join_room',
-                user: myProfile || { id: myId, name: 'تماشاگر', avatar: '🍿', color: '#38bdf8' },
-                hostKey: myHostKey,
-                isHost: isHost
-            });
-
-            updateRoomUI();
-        };
-
-        ws.onerror = () => {
-            clearTimeout(connTimer);
-            console.log('WS Error');
-        };
-
-        ws.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'signal') {
-                    const payload = msg.data || msg;
-                    const from = msg.from || payload.fromUser || payload.userId;
-                    if (payload && payload.type) {
-                        handleData(payload, from);
-                    }
+            socket.onopen = () => {
+                if (ws !== socket) return;
+                isOpened = true;
+                if (connTimeoutTimer) {
+                    clearTimeout(connTimeoutTimer);
+                    connTimeoutTimer = null;
                 }
-            } catch (err) { }
-        };
+                reconnectAttempts = 0;
+                socket.send(JSON.stringify({ type: 'register', id: myId }));
+                setStatus('متصل به اتاق', 'ok');
+                startWsHeartbeat();
+                flushOutbox();
 
-        ws.onclose = () => {
-            clearTimeout(connTimer);
-            if (wsHeartbeatInterval) clearInterval(wsHeartbeatInterval);
-            const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
-            setStatus(`قطع (${reconnectAttempts})`, 'err');
-            setTimeout(connect, delay);
-        };
+                roomMembers.set(myId, {
+                    id: myId,
+                    name: myProfile?.name || 'تماشاگر',
+                    avatar: myProfile?.avatar || '🍿',
+                    color: myProfile?.color || '#38bdf8',
+                    isHost: isHost,
+                    canControl: isHost,
+                    isMuted: false,
+                    isBuffering: false,
+                    time: 0,
+                    isLive: true
+                });
+
+                broadcast({
+                    type: 'join_room',
+                    user: myProfile || { id: myId, name: 'تماشاگر', avatar: '🍿', color: '#38bdf8' },
+                    hostKey: myHostKey,
+                    isHost: isHost
+                });
+
+                if (!isHost) {
+                    broadcast({ type: 'request_sync' });
+                }
+
+                updateRoomUI();
+            };
+
+            socket.onerror = () => {
+                if (connTimeoutTimer) {
+                    clearTimeout(connTimeoutTimer);
+                    connTimeoutTimer = null;
+                }
+                console.log('WS Error');
+            };
+
+            socket.onmessage = (e) => {
+                if (ws !== socket) return;
+                try {
+                    const msg = JSON.parse(e.data);
+                    if (msg.type === 'signal') {
+                        const payload = msg.data || msg;
+                        const from = msg.from || payload.fromUser || payload.userId;
+                        if (payload && payload.type) {
+                            handleData(payload, from);
+                        }
+                    }
+                } catch (err) { }
+            };
+
+            socket.onclose = () => {
+                if (ws !== socket) return;
+                if (connTimeoutTimer) {
+                    clearTimeout(connTimeoutTimer);
+                    connTimeoutTimer = null;
+                }
+                if (wsHeartbeatInterval) clearInterval(wsHeartbeatInterval);
+                const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
+                setStatus(`قطع (${reconnectAttempts})`, 'err');
+                scheduleReconnect(delay);
+            };
+        } catch (err) {
+            console.error('WS initialization failed', err);
+            scheduleReconnect(2000);
+        }
     }
 
     function handleData(data, from) {
@@ -1652,7 +1820,7 @@ function initSyncnemaApp() {
 
             case 'admin_action': {
                 if (data.action === 'kick' && data.targetId === myId) {
-                    if (ws) ws.close();
+                    if (ws) safeCloseWs(ws);
                     alert('⚠️ شما توسط میزبان از اتاق اخراج شدید.');
                     window.location.reload();
                     return;
@@ -1700,7 +1868,7 @@ function initSyncnemaApp() {
 
             case 'join_rejected': {
                 alert(data.reason || 'ورود به اتاق تایید نشد.');
-                if (ws) ws.close();
+                if (ws) safeCloseWs(ws);
                 break;
             }
 
