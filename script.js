@@ -172,6 +172,20 @@ function initSyncnemaApp() {
                 fastForward: true,
                 lock: true,
                 hotkey: true,
+                controls: [
+                    {
+                        name: 'chat-toggle',
+                        position: 'right',
+                        index: 15,
+                        html: `<button type="button" class="art-chat-control-btn" style="display:flex;align-items:center;justify-content:center;background:none;border:none;color:#cbd5e1;cursor:pointer;padding:0 6px;height:100%;position:relative;" title="چت و گفتگو">
+                            <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            <span id="art-unread-badge" style="position:absolute;top:4px;right:2px;background:#06b6d4;color:#fff;font-size:9px;font-weight:bold;width:14px;height:14px;border-radius:9999px;display:none;align-items:center;justify-content:center;line-height:1;">0</span>
+                        </button>`,
+                        click: function () {
+                            toggleSidebar(!isSidebarOpen);
+                        }
+                    }
+                ],
                 customType: {
                     m3u8: function (video, m3u8Url, art) {
                         if (window.Hls && Hls.isSupported()) {
@@ -179,6 +193,12 @@ function initSyncnemaApp() {
                             const hls = new Hls({ enableWorker: true });
                             hls.loadSource(m3u8Url);
                             hls.attachMedia(video);
+                            hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+                                detectSoftsubs();
+                            });
+                            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                                detectSoftsubs();
+                            });
                             art.hls = hls;
                         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                             video.src = m3u8Url;
@@ -186,6 +206,21 @@ function initSyncnemaApp() {
                     }
                 }
             });
+
+            // Bind artInstance.fullscreen to cinemaContainer so chat sidebar remains in fullscreen DOM
+            try {
+                Object.defineProperty(artInstance, 'fullscreen', {
+                    get: () => !!(document.fullscreenElement || document.webkitFullscreenElement),
+                    set: async (state) => {
+                        if (state) {
+                            await enterCinemaFullscreen();
+                        } else {
+                            await exitCinemaFullscreen();
+                        }
+                    },
+                    configurable: true
+                });
+            } catch (err) {}
 
             artInstance.on('fullscreen', (state) => {
                 if (state) {
@@ -213,8 +248,17 @@ function initSyncnemaApp() {
                     setTimeout(() => { isProgrammaticSync = false; }, 400);
                 }
             };
-            artInstance.on('video:loadedmetadata', applyPending);
-            artInstance.on('video:canplay', applyPending);
+            artInstance.on('video:loadedmetadata', () => {
+                applyPending();
+                detectSoftsubs();
+            });
+            artInstance.on('video:canplay', () => {
+                applyPending();
+                detectSoftsubs();
+            });
+            if (artInstance.video && artInstance.video.textTracks) {
+                artInstance.video.textTracks.addEventListener('addtrack', () => detectSoftsubs());
+            }
 
             artInstance.on('video:play', () => {
                 if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
@@ -279,9 +323,11 @@ function initSyncnemaApp() {
                 if (art.url !== url) {
                     art.switchUrl(url, type).then(() => {
                         art.play().catch(() => {});
+                        setTimeout(() => detectSoftsubs(), 600);
                     }).catch(() => {});
                 } else {
                     art.play().catch(() => {});
+                    setTimeout(() => detectSoftsubs(), 600);
                 }
                 return;
             }
@@ -593,6 +639,188 @@ function initSyncnemaApp() {
         localStorage.setItem('syncnema_tutorial_seen', 'true');
     };
 
+    // Softsub (Embedded Subtitles) Management
+    let availableSoftsubs = [];
+    let currentSoftsubIndex = -1;
+
+    function detectSoftsubs() {
+        availableSoftsubs = [];
+        const video = (artInstance && artInstance.video) || videoPlayer;
+        if (!video) return;
+
+        // 1. Scan HLS subtitle tracks if using Hls.js
+        if (artInstance && artInstance.hls && Array.isArray(artInstance.hls.subtitleTracks) && artInstance.hls.subtitleTracks.length > 0) {
+            artInstance.hls.subtitleTracks.forEach((st, idx) => {
+                const label = st.name || st.lang || `زیرنویس HLS ${idx + 1}`;
+                availableSoftsubs.push({
+                    type: 'hls',
+                    index: idx,
+                    label: label,
+                    lang: st.lang || ''
+                });
+            });
+            currentSoftsubIndex = artInstance.hls.subtitleTrack;
+        }
+
+        // 2. Scan native HTML5 video textTracks (embedded softsubs in MP4/WebM/MKV)
+        if (video.textTracks && video.textTracks.length > 0) {
+            Array.from(video.textTracks).forEach((tt, idx) => {
+                if (tt.label === 'Link Sub' || tt.label === 'Custom Sub' || tt.label === 'Artplayer') return;
+                const label = tt.label || tt.language || `زیرنویس ${availableSoftsubs.length + 1}`;
+                availableSoftsubs.push({
+                    type: 'native',
+                    index: idx,
+                    track: tt,
+                    label: label,
+                    lang: tt.language || ''
+                });
+                if (tt.mode === 'showing') {
+                    currentSoftsubIndex = availableSoftsubs.length - 1;
+                }
+            });
+        }
+
+        updateSoftsubUI();
+        updateArtplayerSoftsubSetting();
+    }
+
+    function selectSoftsubTrack(idx) {
+        const video = (artInstance && artInstance.video) || videoPlayer;
+        currentSoftsubIndex = idx;
+
+        if (idx === -1) {
+            if (artInstance && artInstance.hls) {
+                artInstance.hls.subtitleTrack = -1;
+            }
+            if (video && video.textTracks) {
+                Array.from(video.textTracks).forEach(t => {
+                    if (t.label !== 'Link Sub' && t.label !== 'Custom Sub') {
+                        t.mode = 'disabled';
+                    }
+                });
+            }
+            showToast('🔇 زیرنویس خاموش شد', true);
+        } else {
+            const item = availableSoftsubs[idx];
+            if (!item) return;
+
+            if (item.type === 'hls' && artInstance && artInstance.hls) {
+                artInstance.hls.subtitleTrack = item.index;
+            } else if (item.type === 'native' && item.track) {
+                Array.from(video.textTracks).forEach(t => {
+                    if (t === item.track) {
+                        t.mode = 'showing';
+                    } else if (t.label !== 'Link Sub' && t.label !== 'Custom Sub') {
+                        t.mode = 'disabled';
+                    }
+                });
+            }
+            showToast(`💬 زیرنویس: ${item.label}`, true);
+        }
+
+        updateSoftsubUI();
+        updateArtplayerSoftsubSetting();
+    }
+
+    function updateSoftsubUI() {
+        const section = $('softsub-section');
+        const list = $('softsub-list');
+        const countBadge = $('softsub-count-badge');
+        if (!section || !list) return;
+
+        if (availableSoftsubs.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        if (countBadge) {
+            countBadge.textContent = `${availableSoftsubs.length} زیرنویس`;
+        }
+
+        list.innerHTML = '';
+        // "Off" button
+        const offBtn = document.createElement('button');
+        offBtn.type = 'button';
+        offBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            currentSoftsubIndex === -1 
+                ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/40 shadow-sm' 
+                : 'glass-btn text-slate-300 hover:text-white'
+        }`;
+        offBtn.textContent = 'خاموش';
+        offBtn.onclick = () => selectSoftsubTrack(-1);
+        list.appendChild(offBtn);
+
+        // Track buttons
+        availableSoftsubs.forEach((sub, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                currentSoftsubIndex === idx 
+                    ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/40 shadow-sm' 
+                    : 'glass-btn text-slate-300 hover:text-white'
+            }`;
+            btn.textContent = sub.label;
+            btn.onclick = () => selectSoftsubTrack(idx);
+            list.appendChild(btn);
+        });
+    }
+
+    function updateArtplayerSoftsubSetting() {
+        if (!artInstance || !artInstance.setting) return;
+        
+        if (availableSoftsubs.length === 0) {
+            try {
+                if (artInstance.setting.find('subtitle-tracks')) {
+                    artInstance.setting.delete('subtitle-tracks');
+                }
+            } catch (e) {}
+            return;
+        }
+
+        const selectorItems = [
+            {
+                default: currentSoftsubIndex === -1,
+                html: 'خاموش',
+                value: -1
+            }
+        ];
+
+        availableSoftsubs.forEach((sub, idx) => {
+            selectorItems.push({
+                default: currentSoftsubIndex === idx,
+                html: sub.label,
+                value: idx
+            });
+        });
+
+        const activeLabel = currentSoftsubIndex >= 0 && availableSoftsubs[currentSoftsubIndex] 
+            ? availableSoftsubs[currentSoftsubIndex].label 
+            : 'خاموش';
+
+        const settingConfig = {
+            name: 'subtitle-tracks',
+            width: 200,
+            html: 'زیرنویس (Softsub)',
+            tooltip: activeLabel,
+            selector: selectorItems,
+            onSelect: function (selected) {
+                selectSoftsubTrack(selected.value);
+                return selected.html;
+            }
+        };
+
+        try {
+            if (artInstance.setting.find('subtitle-tracks')) {
+                artInstance.setting.update(settingConfig);
+            } else {
+                artInstance.setting.add(settingConfig);
+            }
+        } catch (e) {
+            console.warn('Artplayer softsub setting error:', e);
+        }
+    }
+
     // Subtitle Offset Adjustment
     function adjustSubOffset(delta) {
         if (delta === 0) {
@@ -841,6 +1069,8 @@ function initSyncnemaApp() {
             unreadCount = 0; unreadBadge.classList.add('hidden');
             const m3Unread = $('m3-unread-badge');
             if (m3Unread) m3Unread.classList.add('hidden');
+            const artUnread = $('art-unread-badge');
+            if (artUnread) artUnread.style.display = 'none';
             setTimeout(() => {
                 chatMsgs.scrollTop = chatMsgs.scrollHeight;
             }, 100);
@@ -2260,6 +2490,11 @@ function initSyncnemaApp() {
             if (m3Unread) {
                 m3Unread.textContent = unreadCount;
                 m3Unread.classList.remove('hidden');
+            }
+            const artUnread = $('art-unread-badge');
+            if (artUnread) {
+                artUnread.textContent = unreadCount;
+                artUnread.style.display = 'flex';
             }
             notify();
             renderStreamMessage(payload);

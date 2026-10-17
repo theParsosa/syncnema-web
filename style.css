@@ -467,12 +467,22 @@ body {
 }
 
 :fullscreen #chat-sidebar,
-.is-fullscreen #chat-sidebar {
-    position: absolute;
-    right: 4.75rem;
-    top: 4.75rem;
-    bottom: 5.5rem;
-    z-index: 60;
+.is-fullscreen #chat-sidebar,
+.is-fullscreen-cinema #chat-sidebar {
+    position: absolute !important;
+    right: 1.25rem !important;
+    top: 1.25rem !important;
+    bottom: 5.5rem !important;
+    width: 320px !important;
+    max-width: calc(100vw - 2.5rem) !important;
+    height: auto !important;
+    max-height: calc(100vh - 6.75rem) !important;
+    z-index: 90 !important;
+    pointer-events: auto !important;
+    border-radius: 1.25rem !important;
+    background-color: var(--md-sys-color-surface-container-low) !important;
+    border: 1px solid var(--md-sys-color-outline) !important;
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95) !important;
 }
 
 :fullscreen #catch-up-btn,
@@ -483,26 +493,40 @@ body {
 
 @media (max-width: 768px), (max-height: 500px) {
     :fullscreen #right-floating-controls,
-    .is-fullscreen #right-floating-controls {
-        top: 0.4rem !important;
-        right: 0.4rem !important;
+    .is-fullscreen #right-floating-controls,
+    .is-fullscreen-cinema #right-floating-controls {
+        display: flex !important;
+        top: 0.75rem !important;
+        right: 0.75rem !important;
+        z-index: 85 !important;
     }
 
     :fullscreen #left-floating-controls,
-    .is-fullscreen #left-floating-controls {
-        top: 0.4rem !important;
-        left: 0.4rem !important;
+    .is-fullscreen #left-floating-controls,
+    .is-fullscreen-cinema #left-floating-controls {
+        display: flex !important;
+        top: 0.75rem !important;
+        left: 0.75rem !important;
+        z-index: 85 !important;
     }
 
     :fullscreen #chat-sidebar,
-    .is-fullscreen #chat-sidebar {
-        right: 2.35rem !important;
+    .is-fullscreen #chat-sidebar,
+    .is-fullscreen-cinema #chat-sidebar {
+        right: 0.75rem !important;
         bottom: 4.5rem !important;
-        top: auto !important;
-        width: 235px !important;
-        max-width: calc(100vw - 2.85rem) !important;
-        height: 275px !important;
-        max-height: min(65vh, calc(100vh - 5.5rem)) !important;
+        top: 0.75rem !important;
+        width: 300px !important;
+        max-width: calc(100vw - 1.5rem) !important;
+        height: auto !important;
+        max-height: calc(100vh - 5.25rem) !important;
+        z-index: 90 !important;
+    }
+
+    .is-fullscreen-cinema #close-sidebar-btn,
+    :fullscreen #close-sidebar-btn,
+    .is-fullscreen #close-sidebar-btn {
+        display: flex !important;
     }
 }
 
@@ -946,9 +970,9 @@ html, body {
         max-height: 38vh !important;
     }
 
-    /* Hide redundant floating buttons over video in portrait mode */
-    #left-floating-controls,
-    #right-floating-controls {
+    /* Hide redundant floating buttons over video in portrait mode when not in fullscreen cinema */
+    body:not(.is-fullscreen-cinema) #left-floating-controls,
+    body:not(.is-fullscreen-cinema) #right-floating-controls {
         display: none !important;
     }
 
