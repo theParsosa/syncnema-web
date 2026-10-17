@@ -1635,8 +1635,48 @@ window.addEventListener('load', () => {
                 m3Unread.classList.remove('hidden');
             }
             notify();
-            showToast(`💬 ${payload.userName || 'پیام'}: ${payload.text.substring(0, 20)}...`, false);
+            renderStreamMessage(payload);
         }
+    }
+
+    function renderStreamMessage(msg) {
+        const streamContainer = $('chat-stream-overlay');
+        if (!streamContainer) return;
+
+        // Keep at most 3 messages visible at once
+        while (streamContainer.children.length >= 3) {
+            streamContainer.removeChild(streamContainer.firstElementChild);
+        }
+
+        const el = document.createElement('div');
+        el.className = 'chat-stream-msg m3-surface-container pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl border border-white/10 text-xs text-white cursor-pointer';
+        el.title = 'کلیک برای باز کردن چت';
+        el.innerHTML = `
+            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${msg.userColor || '#38bdf8'}"></span>
+            <span class="font-bold text-cyan-300 shrink-0">${escapeHtml(msg.userName || 'کاربر')}:</span>
+            <span class="text-slate-200 truncate max-w-[200px]">${escapeHtml(msg.text)}</span>
+        `;
+
+        el.onclick = () => {
+            toggleSidebar(true);
+            if (typeof switchChatDrawerTab === 'function') {
+                switchChatDrawerTab('chat');
+            }
+        };
+
+        streamContainer.appendChild(el);
+
+        // Auto-remove after 4 seconds with smooth fade-out
+        setTimeout(() => {
+            if (el.parentNode === streamContainer) {
+                el.classList.add('fading-out');
+                setTimeout(() => {
+                    if (el.parentNode === streamContainer) {
+                        streamContainer.removeChild(el);
+                    }
+                }, 400);
+            }
+        }, 4000);
     }
 
     function switchChatDrawerTab(tabName) {
