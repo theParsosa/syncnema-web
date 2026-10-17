@@ -203,6 +203,8 @@ window.addEventListener('load', () => {
         const nameEl = $('user-name-display');
         if (avatarEl) avatarEl.textContent = myProfile.avatar;
         if (nameEl) nameEl.textContent = myProfile.name;
+        const m3AvatarEl = $('m3-user-avatar');
+        if (m3AvatarEl) m3AvatarEl.textContent = myProfile.avatar;
     }
 
     function openProfileModal() {
@@ -476,6 +478,37 @@ window.addEventListener('load', () => {
         showToast(newLocked ? '🔒 اتاق قفل شد' : '🔓 قفل اتاق برداشته شد', true);
     });
 
+    // Mobile M3 Bottom Bar & Top Chip Event Handlers
+    $('m3-media-btn')?.addEventListener('click', () => {
+        $('video-modal')?.classList.remove('hidden');
+    });
+    $('m3-spectators-btn')?.addEventListener('click', () => {
+        toggleSidebar(true);
+        if (typeof switchChatDrawerTab === 'function') {
+            switchChatDrawerTab('spectators');
+        }
+    });
+    $('m3-chat-fab')?.addEventListener('click', () => {
+        toggleSidebar(!isSidebarOpen);
+    });
+    $('m3-admin-btn')?.addEventListener('click', () => {
+        if (!isHost) {
+            showToast('⚠️ فقط میزبان اتاق به این پنل دسترسی دارد', false);
+            return;
+        }
+        updateAdminModalUI();
+        adminModal?.classList.remove('hidden');
+    });
+    $('m3-fs-btn')?.addEventListener('click', () => {
+        customFsBtn?.click();
+    });
+    $('m3-share-btn')?.addEventListener('click', () => {
+        shareRoomBtn?.click();
+    });
+    $('m3-profile-trigger')?.addEventListener('click', () => {
+        openProfileModal();
+    });
+
     window.addEventListener('beforeunload', () => {
         if (roomPeers.size > 0 || partnerId) {
             broadcast({ type: 'disconnect' });
@@ -500,6 +533,8 @@ window.addEventListener('load', () => {
             applyTopFade();
             sidebar.classList.remove('sidebar-closed');
             unreadCount = 0; unreadBadge.classList.add('hidden');
+            const m3Unread = $('m3-unread-badge');
+            if (m3Unread) m3Unread.classList.add('hidden');
             setTimeout(() => {
                 chatMsgs.scrollTop = chatMsgs.scrollHeight;
             }, 100);
@@ -1002,6 +1037,12 @@ window.addEventListener('load', () => {
         if (adminBtn) {
             if (isHost) adminBtn.classList.remove('hidden');
             else adminBtn.classList.add('hidden');
+        }
+
+        const m3AdminBtn = $('m3-admin-btn');
+        if (m3AdminBtn) {
+            if (isHost) m3AdminBtn.classList.remove('hidden');
+            else m3AdminBtn.classList.add('hidden');
         }
 
         if (typeof updateSpectatorsList === 'function') {
@@ -1588,6 +1629,11 @@ window.addEventListener('load', () => {
             unreadCount++;
             unreadBadge.textContent = unreadCount;
             unreadBadge.classList.remove('hidden');
+            const m3Unread = $('m3-unread-badge');
+            if (m3Unread) {
+                m3Unread.textContent = unreadCount;
+                m3Unread.classList.remove('hidden');
+            }
             notify();
             showToast(`💬 ${payload.userName || 'پیام'}: ${payload.text.substring(0, 20)}...`, false);
         }

@@ -765,3 +765,34 @@ emoji-picker {
     font-size: 4rem;
     animation: rotate-phone 3s infinite ease-in-out;
 }
+
+/* ==========================================================================
+   Mobile M3 Bottom Bar & Safe-Area Adjustments
+   ========================================================================== */
+#m3-bottom-bar {
+    position: fixed;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    left: 0.75rem;
+    right: 0.75rem;
+    height: 60px;
+    z-index: 35;
+    background-color: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 9999px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.3s ease;
+}
+
+#m3-bottom-bar .m3-pill-btn,
+#m3-bottom-bar .m3-fab {
+    min-height: 48px;
+    min-width: 48px;
+}
+
+@media (min-width: 768px) {
+    #m3-bottom-bar,
+    #m3-top-chip {
+        display: none !important;
+    }
+}
+

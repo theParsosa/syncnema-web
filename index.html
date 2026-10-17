@@ -315,9 +315,30 @@
         </div>
     </div>
 
+    <!-- ===== COMPACT MOBILE M3 TOP CHIP (< 768px) ===== -->
+    <div id="m3-top-chip"
+        class="fixed top-3 inset-x-3 z-30 md:hidden flex justify-between items-center pointer-events-none transition-all duration-300">
+        <!-- Brand & Live Room Status -->
+        <div class="m3-surface-container pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-white tracking-wide">Syncnema</span>
+            <span class="text-[10px] text-slate-400 font-mono border-r border-white/10 pr-1.5" id="m3-room-title">اتاق</span>
+        </div>
+
+        <!-- Right Quick Actions (Share & Profile Avatar) -->
+        <div class="flex items-center gap-1.5 pointer-events-auto">
+            <button id="m3-share-btn" class="m3-surface-container text-cyan-300 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg" title="دعوت دوستان">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            </button>
+            <button id="m3-profile-trigger" class="m3-surface-container text-white w-10 h-10 rounded-full flex items-center justify-center text-lg active:scale-90 transition-transform shadow-lg" title="پروفایل من">
+                <span id="m3-user-avatar">🍿</span>
+            </button>
+        </div>
+    </div>
+
     <!-- ===== FLOATING TOP BAR (VISIONOS 3-ISLAND DOCK) ===== -->
     <header id="top-bar"
-        class="fixed top-3 inset-x-0 z-30 px-3 sm:px-6 pointer-events-none filter blur-sm transition-all duration-500 flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
+        class="fixed top-3 inset-x-0 z-30 px-3 sm:px-6 pointer-events-none filter blur-sm transition-all duration-500 max-md:hidden flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
 
         <!-- Island 1: Brand & Status (Right Side in RTL) -->
         <div class="glass-island pointer-events-auto flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-full relative group">
@@ -539,6 +560,39 @@
             </div>
         </aside>
     </main>
+
+    <!-- ===== MOBILE M3 BOTTOM ACTION BAR (< 768px) ===== -->
+    <nav id="m3-bottom-bar"
+        class="fixed bottom-3 inset-x-3 z-30 md:hidden flex items-center justify-between px-2.5 py-1.5 m3-surface-container rounded-full shadow-2xl border border-white/10 pointer-events-auto">
+        <!-- Media Hub Trigger (Film & Subtitles) -->
+        <button id="m3-media-btn" class="m3-pill-btn flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-200 active:scale-95 transition-transform" title="انتخاب فیلم و زیرنویس">
+            <svg class="w-5 h-5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            <span class="font-bold">فیلم</span>
+        </button>
+
+        <!-- Spectators Trigger -->
+        <button id="m3-spectators-btn" class="m3-pill-btn flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-200 active:scale-95 transition-transform" title="حاضرین">
+            <svg class="w-5 h-5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span class="spectators-count-badge font-mono font-bold text-cyan-300">1</span>
+        </button>
+
+        <!-- Admin Crown Button (Host Only) -->
+        <button id="m3-admin-btn" class="m3-pill-btn hidden w-11 h-11 rounded-full flex items-center justify-center text-amber-300 active:scale-95 transition-transform" title="مدیریت اتاق">
+            <svg class="w-5 h-5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path></svg>
+        </button>
+
+        <!-- Extended FAB Chat Trigger -->
+        <button id="m3-chat-fab" class="m3-fab flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 shadow-lg relative active:scale-95 transition-transform" title="گفتگو">
+            <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span>چت</span>
+            <span id="m3-unread-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold hidden shadow">0</span>
+        </button>
+
+        <!-- Fullscreen Button -->
+        <button id="m3-fs-btn" class="m3-pill-btn w-11 h-11 rounded-full flex items-center justify-center text-slate-200 fs-btn active:scale-95 transition-transform" title="تمام صفحه">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </button>
+    </nav>
 
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
