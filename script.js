@@ -1356,31 +1356,54 @@ function initSyncnemaApp() {
             isProgrammaticSync = true;
             ignoreSyncUntil = Date.now() + 3000;
 
-            if (force || !clock.playing || Math.abs(drift) > 3.0) {
-                if (force || Math.abs(drift) > 0.5) {
-                    setPlayerTime(Math.max(0, hostLiveTime));
+            // 1. Host is paused -> align position to host paused frame
+            if (!clock.playing) {
+                if (force || Math.abs(currentLocalTime - clock.time) > 0.5) {
+                    setPlayerTime(Math.max(0, clock.time));
                 }
                 setPlayerPlaybackRate(clock.rate || 1.0);
-            } else if (clock.playing && isLocalPlaying && Math.abs(drift) > 0.8) {
-                // Smooth drift compensation via micro-adjustment without freezing video decoding
-                const baseRate = clock.rate || 1.0;
-                if (drift < 0) {
-                    setPlayerPlaybackRate(Math.min(2.0, baseRate * 1.07));
-                } else {
-                    setPlayerPlaybackRate(Math.max(0.5, baseRate * 0.93));
-                }
-            } else if (clock.playing && isLocalPlaying) {
-                if (getPlayerPlaybackRate() !== (clock.rate || 1.0)) {
-                    setPlayerPlaybackRate(clock.rate || 1.0);
+                if (isLocalPlaying) {
+                    pausePlayer();
+                    setPlaybackStatus('توقف لایو');
                 }
             }
-
-            if (clock.playing && !isLocalPlaying) {
+            // 2. Host unpaused/playing, while guest was paused -> smoothly start without jumping forward!
+            else if (clock.playing && !isLocalPlaying) {
+                const pauseDrift = Math.abs(currentLocalTime - clock.time);
+                // If guest was paused close to the scene (within 8 seconds), don't teleport forward
+                if (!force && pauseDrift < 8.0) {
+                    if (pauseDrift > 0.5) {
+                        setPlayerTime(Math.max(0, clock.time));
+                    }
+                    // Start playing at 1.08x to seamlessly catch up to live edge with zero missed scenes
+                    setPlayerPlaybackRate(Math.min(2.0, (clock.rate || 1.0) * 1.08));
+                } else {
+                    setPlayerTime(Math.max(0, hostLiveTime));
+                    setPlayerPlaybackRate(clock.rate || 1.0);
+                }
                 playPlayer();
                 setPlaybackStatus('پخش لایو');
-            } else if (!clock.playing && isLocalPlaying) {
-                pausePlayer();
-                setPlaybackStatus('توقف لایو');
+            }
+            // 3. Both are playing
+            else if (clock.playing && isLocalPlaying) {
+                // If local is still buffering, do NOT interrupt downloading with hard seeks
+                if (!isLocalBuffering) {
+                    if (force || Math.abs(drift) > 5.0) {
+                        setPlayerTime(Math.max(0, hostLiveTime));
+                        setPlayerPlaybackRate(clock.rate || 1.0);
+                    } else if (Math.abs(drift) > 0.7) {
+                        const baseRate = clock.rate || 1.0;
+                        if (drift < 0) {
+                            setPlayerPlaybackRate(Math.min(2.0, baseRate * 1.07));
+                        } else {
+                            setPlayerPlaybackRate(Math.max(0.5, baseRate * 0.93));
+                        }
+                    } else {
+                        if (getPlayerPlaybackRate() !== (clock.rate || 1.0)) {
+                            setPlayerPlaybackRate(clock.rate || 1.0);
+                        }
+                    }
+                }
             }
 
             setTimeout(() => {
@@ -1475,6 +1498,16 @@ function initSyncnemaApp() {
 
         if (typeof updateSpectatorsList === 'function') {
             updateSpectatorsList();
+        }
+
+        const bufferingMembers = Array.from(roomMembers.values()).filter(u => u.id !== myId && u.isBuffering);
+        if (bufferingMembers.length > 0 && bufferBadge && bufferText) {
+            const names = bufferingMembers.map(u => u.name || 'تماشاگر').slice(0, 2).join('، ');
+            const extra = bufferingMembers.length > 2 ? ` و ${bufferingMembers.length - 2} نفر دیگر` : '';
+            bufferText.textContent = `⏳ در حال بافر: ${names}${extra}...`;
+            bufferBadge.classList.remove('hidden');
+        } else if (bufferBadge) {
+            bufferBadge.classList.add('hidden');
         }
 
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -2243,12 +2276,16 @@ function initSyncnemaApp() {
         }
 
         const el = document.createElement('div');
-        el.className = 'chat-stream-msg m3-surface-container pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl border border-white/10 text-xs text-white cursor-pointer';
+        el.className = 'chat-stream-msg flex items-center gap-2.5 text-sm text-white cursor-pointer';
         el.title = 'کلیک برای باز کردن چت';
+        const avatar = msg.userAvatar || '🍿';
+        const color = msg.userColor || '#38bdf8';
         el.innerHTML = `
-            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${msg.userColor || '#38bdf8'}"></span>
-            <span class="font-bold text-cyan-300 shrink-0">${escapeHtml(msg.userName || 'کاربر')}:</span>
-            <span class="text-slate-200 truncate max-w-[200px]">${escapeHtml(msg.text)}</span>
+            <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 shadow-md" style="background-color: ${color}28; border: 1.5px solid ${color};">
+                ${escapeHtml(avatar)}
+            </span>
+            <span class="font-bold text-cyan-300 text-xs sm:text-sm shrink-0 drop-shadow">${escapeHtml(msg.userName || 'کاربر')}:</span>
+            <span class="text-white text-xs sm:text-sm font-semibold truncate max-w-[200px] sm:max-w-[280px] drop-shadow">${escapeHtml(msg.text)}</span>
         `;
 
         el.onclick = () => {

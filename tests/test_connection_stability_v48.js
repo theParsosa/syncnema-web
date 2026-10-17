@@ -14,8 +14,8 @@ const scriptJs = fs.readFileSync(scriptPath, 'utf8');
 assert(indexHtml.includes('id="m3-status-container"'), 'index.html must have #m3-status-container in mobile header');
 assert(indexHtml.includes('id="m3-connection-dot"'), 'index.html must have #m3-connection-dot');
 assert(indexHtml.includes('id="m3-status-text"'), 'index.html must have #m3-status-text');
-assert(indexHtml.includes('href="style.css?v=4.8"'), 'index.html must link style.css with v=4.8 cache buster');
-assert(indexHtml.includes('src="script.js?v=4.8"'), 'index.html must link script.js with v=4.8 cache buster');
+assert(/href="style\.css\?v=4\.[89]"/.test(indexHtml), 'index.html must link style.css with v=4.8 or v=4.9 cache buster');
+assert(/src="script\.js\?v=4\.[89]"/.test(indexHtml), 'index.html must link script.js with v=4.8 or v=4.9 cache buster');
 console.log('✓ 1. Mobile Status Indicator DOM & Cache Busters Verified');
 
 // 2. Dual Status Indicator Updates (Desktop & Mobile)
