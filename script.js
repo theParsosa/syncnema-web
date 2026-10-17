@@ -728,7 +728,7 @@ window.addEventListener('load', () => {
     }
     const canSendReaction = createReactionThrottler(400);
 
-    document.querySelectorAll('.reaction-btn').forEach(btn => {
+    document.querySelectorAll('.reaction-btn, .m3-quick-emoji').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             if (!canSendReaction()) return;
