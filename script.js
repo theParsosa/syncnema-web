@@ -73,11 +73,37 @@ window.addEventListener('load', () => {
         if (isYouTubeMode && ytPlayer?.playVideo) {
             ytPlayer.playVideo();
         } else if (artInstance && artInstance.video) {
-            artInstance.play().catch(() => {
-                artInstance.video.play().catch(() => {});
+            const prom = artInstance.play();
+            if (prom && typeof prom.catch === 'function') {
+                prom.catch(() => {
+                    const vid = artInstance.video;
+                    if (vid) {
+                        vid.play().catch(() => {
+                            if (!vid.muted) {
+                                vid.muted = true;
+                                vid.play().then(() => {
+                                    showToast('🔇 صدا قطع است (مرورگر موبایل). برای وصل صدا لمس کنید.', false);
+                                    const unmuteOnClick = () => {
+                                        vid.muted = false;
+                                        showToast('🔊 صدا وصل شد', true);
+                                        window.removeEventListener('click', unmuteOnClick, true);
+                                        window.removeEventListener('touchstart', unmuteOnClick, true);
+                                    };
+                                    window.addEventListener('click', unmuteOnClick, true);
+                                    window.addEventListener('touchstart', unmuteOnClick, true);
+                                }).catch(() => {});
+                            }
+                        });
+                    }
+                });
+            }
+        } else if (videoPlayer) {
+            videoPlayer.play().catch(() => {
+                if (!videoPlayer.muted) {
+                    videoPlayer.muted = true;
+                    videoPlayer.play().catch(() => {});
+                }
             });
-        } else {
-            videoPlayer.play().catch(() => {});
         }
     }
 
@@ -190,10 +216,33 @@ window.addEventListener('load', () => {
             artInstance.on('video:loadedmetadata', applyPending);
             artInstance.on('video:canplay', applyPending);
 
-            artInstance.on('video:play', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:pause', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:seeked', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:ratechange', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:play', () => {
+                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                    broadcastLiveClock();
+                }
+            });
+            artInstance.on('video:pause', () => {
+                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                    broadcastLiveClock();
+                }
+            });
+            artInstance.on('video:ratechange', () => {
+                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                    broadcastLiveClock();
+                }
+            });
+            artInstance.on('seek', (currentTime) => {
+                if (isProgrammaticSync || Date.now() < ignoreSyncUntil) return;
+                if (canControlPlayback()) {
+                    broadcastLiveClock();
+                } else if (latestHostClock) {
+                    const res = calculateDesync(currentTime, latestHostClock);
+                    if (res.isDetached) {
+                        isLiveMode = false;
+                        updateCatchUpUI(true, res.diff);
+                    }
+                }
+            });
 
             artInstance.on('video:waiting', () => {
                 if (!isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
@@ -1205,8 +1254,20 @@ window.addEventListener('load', () => {
 
     let latestHostClock = null;
 
-    function calculateDesync(localTime, hostTime, hostTimestamp, rtt = 100) {
-        const elapsed = (Date.now() - hostTimestamp) / 1000;
+    function calculateDesync(localTime, hostTimeOrClock, hostTimestamp, isHostPlaying = true, rate = 1) {
+        let hostTime, timestamp, playing, r;
+        if (typeof hostTimeOrClock === 'object' && hostTimeOrClock !== null) {
+            hostTime = hostTimeOrClock.time || 0;
+            timestamp = hostTimeOrClock.timestamp || Date.now();
+            playing = hostTimeOrClock.playing !== undefined ? !!hostTimeOrClock.playing : true;
+            r = hostTimeOrClock.rate || 1;
+        } else {
+            hostTime = hostTimeOrClock || 0;
+            timestamp = hostTimestamp || Date.now();
+            playing = (typeof isHostPlaying === 'boolean') ? isHostPlaying : true;
+            r = rate || 1;
+        }
+        const elapsed = playing ? Math.max(0, (Date.now() - timestamp) / 1000) * r : 0;
         const currentHostLive = hostTime + elapsed;
         const diff = localTime - currentHostLive;
         const isDetached = Math.abs(diff) > 2.5;
@@ -1238,8 +1299,8 @@ window.addEventListener('load', () => {
         latestHostClock = clock;
 
         const now = Date.now();
-        const elapsed = Math.max(0, (now - (clock.timestamp || now)) / 1000);
-        const hostLiveTime = clock.playing ? clock.time + (elapsed * (clock.rate || 1)) : clock.time;
+        const elapsed = clock.playing ? Math.max(0, (now - (clock.timestamp || now)) / 1000) * (clock.rate || 1) : 0;
+        const hostLiveTime = clock.time + elapsed;
 
         const currentLocalTime = getPlayerCurrentTime();
         const isLocalPlaying = getPlayerIsPlaying();
@@ -1247,24 +1308,23 @@ window.addEventListener('load', () => {
 
         if (force || isLiveMode) {
             isProgrammaticSync = true;
+            ignoreSyncUntil = Date.now() + 3000;
+
             if (force || Math.abs(drift) > 2.0) {
-                ignoreSyncUntil = Date.now() + 2500;
                 setPlayerTime(Math.max(0, hostLiveTime));
             }
 
             if (clock.playing && !isLocalPlaying) {
-                ignoreSyncUntil = Date.now() + 2500;
                 playPlayer();
                 setPlaybackStatus('پخش لایو');
             } else if (!clock.playing && isLocalPlaying) {
-                ignoreSyncUntil = Date.now() + 2500;
                 pausePlayer();
                 setPlaybackStatus('توقف لایو');
             }
 
             setTimeout(() => {
                 isProgrammaticSync = false;
-            }, 600);
+            }, 800);
 
             updateCatchUpUI(false, 0);
         } else {
@@ -1293,6 +1353,8 @@ window.addEventListener('load', () => {
         } else if (media.type === 'url' && media.url) {
             switchPlayer(false);
             loadVideoSource(media.url, media.isHls);
+        } else if (media.type === 'file') {
+            showToast(`🎬 میزبان در حال پخش فایل «${media.fileName || 'ویدیویی'}» است.`, true);
         }
     }
 
@@ -1367,7 +1429,25 @@ window.addEventListener('load', () => {
         }
     }
 
+    let wsHeartbeatInterval = null;
+
+    function startWsHeartbeat() {
+        if (wsHeartbeatInterval) clearInterval(wsHeartbeatInterval);
+        wsHeartbeatInterval = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'signal', data: { type: 'ping' } }));
+            }
+        }, 15000);
+    }
+
     function connect() {
+        if (ws && ws.readyState === WebSocket.OPEN) return;
+        if (ws && ws.readyState === WebSocket.CONNECTING) return;
+
+        if (ws) {
+            try { ws.close(); } catch (e) {}
+        }
+
         setStatus('در حال اتصال...', 'yellow');
 
         ws = new WebSocket(getWsUrl());
@@ -1375,6 +1455,7 @@ window.addEventListener('load', () => {
             ws.send(JSON.stringify({ type: 'register', id: myId }));
             reconnectAttempts = 0;
             setStatus('متصل به اتاق', 'ok');
+            startWsHeartbeat();
 
             roomMembers.set(myId, {
                 id: myId,
@@ -1417,6 +1498,7 @@ window.addEventListener('load', () => {
         };
 
         ws.onclose = () => {
+            if (wsHeartbeatInterval) clearInterval(wsHeartbeatInterval);
             const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
             setStatus(`قطع (${reconnectAttempts})`, 'err');
             setTimeout(connect, delay);
@@ -1427,6 +1509,22 @@ window.addEventListener('load', () => {
         if (!data || !data.type) return;
 
         switch (data.type) {
+            case 'ping': {
+                if (from && from !== myId) send(from, { type: 'pong' });
+                break;
+            }
+
+            case 'pong': {
+                break;
+            }
+
+            case 'request_sync': {
+                if (isHost && from && from !== myId) {
+                    send(from, { type: 'room_state', state: getAuthoritativeState() });
+                }
+                break;
+            }
+
             case 'join_room': {
                 if (!from || from === myId) return;
 
@@ -1457,7 +1555,6 @@ window.addEventListener('load', () => {
                 if (isHost) {
                     const authState = getAuthoritativeState();
                     send(from, { type: 'room_state', state: authState });
-                    broadcast({ type: 'room_state', state: authState });
                 }
                 break;
             }
@@ -2218,6 +2315,9 @@ window.addEventListener('load', () => {
             setPlaybackStatus('فایل لود شد');
             document.getElementById('video-modal').classList.add('hidden');
             showToast(`🎬 فایل ${f.name} بارگذاری شد`, true);
+
+            currentRoomState.media = { type: 'file', fileName: f.name, fileSize: f.size };
+            broadcast({ type: 'room_media', media: currentRoomState.media });
         }
     };
     $('subtitle-file-input').onchange = (e) => {
@@ -2406,7 +2506,7 @@ window.addEventListener('load', () => {
             currentRoomState.liveClock = clock;
             broadcast({ type: 'sync_tick', clock });
         } else if (latestHostClock) {
-            const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
+            const res = calculateDesync(curTime, latestHostClock);
             if (!isLiveMode) {
                 updateCatchUpUI(true, res.diff);
             } else if (res.isDetached) {
@@ -2450,15 +2550,6 @@ window.addEventListener('load', () => {
         lastInteractionTime = Date.now();
         if (canControlPlayback()) {
             broadcastLiveClock();
-        } else {
-            isLiveMode = false;
-            if (latestHostClock) {
-                const curTime = getPlayerCurrentTime();
-                const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
-                updateCatchUpUI(true, res.diff);
-            } else {
-                updateCatchUpUI(true, 0);
-            }
         }
     };
 
@@ -2473,6 +2564,37 @@ window.addEventListener('load', () => {
     };
     videoPlayer.addEventListener('loadedmetadata', applyPendingNative);
     videoPlayer.addEventListener('canplay', applyPendingNative);
+
+    // Display Room Code in header
+    const m3RoomTitle = $('m3-room-title');
+    if (m3RoomTitle && currentRoomId) {
+        m3RoomTitle.textContent = `اتاق: ${currentRoomId}`;
+        m3RoomTitle.title = 'شناسه اتاق (کلیک برای کپی)';
+        m3RoomTitle.style.cursor = 'pointer';
+        m3RoomTitle.onclick = () => {
+            if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(currentRoomId);
+                showToast(`📋 شناسه اتاق کپی شد: ${currentRoomId}`, true);
+            }
+        };
+    }
+
+    // Mobile background recovery & network reconnect
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connect();
+            } else {
+                broadcast({ type: 'request_sync' });
+            }
+        }
+    });
+
+    window.addEventListener('online', () => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            connect();
+        }
+    });
 
     // Auto-initialize Artplayer container on load so player UI is ready
     if (typeof Artplayer !== 'undefined') {
