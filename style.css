@@ -921,10 +921,20 @@ emoji-picker {
 /* ==========================================================================
    Mobile Dual-Mode Ergonomics (Portrait Browsing vs Cinema Fullscreen)
    ========================================================================== */
+html, body {
+    height: 100%;
+    height: 100dvh;
+    height: -webkit-fill-available;
+    overflow: hidden;
+}
+
 @media (max-width: 767px) and (orientation: portrait) {
     #cinema-container {
         flex-direction: column !important;
         padding-top: 3.5rem !important; /* Space below m3-top-chip */
+        height: 100% !important;
+        height: 100dvh !important;
+        min-height: 0 !important;
     }
 
     #player-viewport {
@@ -933,6 +943,12 @@ emoji-picker {
         height: auto !important;
         aspect-ratio: 16 / 9 !important;
         max-height: 38vh !important;
+    }
+
+    /* Hide redundant floating buttons over video in portrait mode */
+    #left-floating-controls,
+    #right-floating-controls {
+        display: none !important;
     }
 
     #my-video,
@@ -945,8 +961,9 @@ emoji-picker {
         display: flex !important;
     }
 
-    /* In portrait browsing mode, sidebar is docked below player viewport */
+    /* In portrait browsing mode, sidebar is permanently docked below player and fills lower space */
     #chat-sidebar {
+        display: flex !important;
         position: relative !important;
         top: auto !important;
         right: auto !important;
@@ -954,21 +971,28 @@ emoji-picker {
         bottom: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        flex: 1 1 auto !important;
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
         border-radius: 0 !important;
         border-left: none !important;
         border-right: none !important;
         border-bottom: none !important;
+        border-top: 1px solid var(--md-sys-color-outline) !important;
         box-shadow: none !important;
         transform: none !important;
         opacity: 1 !important;
         pointer-events: auto !important;
     }
 
-    #chat-sidebar.sidebar-closed {
+    #close-sidebar-btn {
         display: none !important;
+    }
+
+    /* Safe area padding for mobile browsers with bottom address bars (Brave, iOS Safari) */
+    #chat-pane > div:last-child {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem)) !important;
     }
 
     /* Hide the floating bottom bar and floating ribbon in portrait mode when docked */

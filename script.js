@@ -635,17 +635,41 @@ window.addEventListener('load', () => {
         };
     }
 
-    function enterCinemaFullscreen() {
+    async function enterCinemaFullscreen() {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-            if (cinemaContainer.requestFullscreen) {
-                cinemaContainer.requestFullscreen().catch(() => {});
-            } else if (cinemaContainer.webkitRequestFullscreen) {
-                cinemaContainer.webkitRequestFullscreen();
-            } else if (videoPlayer.webkitEnterFullscreen) {
-                videoPlayer.webkitEnterFullscreen();
-            }
+            try {
+                if (cinemaContainer.requestFullscreen) {
+                    await cinemaContainer.requestFullscreen();
+                } else if (cinemaContainer.webkitRequestFullscreen) {
+                    await cinemaContainer.webkitRequestFullscreen();
+                } else if (videoPlayer.webkitEnterFullscreen) {
+                    videoPlayer.webkitEnterFullscreen();
+                }
+            } catch (err) {}
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
         }
         document.body.classList.add('is-fullscreen-cinema');
+    }
+
+    async function exitCinemaFullscreen() {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+            try {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                }
+            } catch (err) {}
+        }
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('portrait').catch(() => {});
+        }
+        document.body.classList.remove('is-fullscreen-cinema');
     }
 
     customFsBtn.onclick = () => {
@@ -653,12 +677,7 @@ window.addEventListener('load', () => {
         if (!isFs) {
             enterCinemaFullscreen();
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            }
-            document.body.classList.remove('is-fullscreen-cinema');
+            exitCinemaFullscreen();
         }
     };
 
@@ -667,9 +686,18 @@ window.addEventListener('load', () => {
         cinemaContainer.classList.toggle('is-fullscreen', isFs);
         document.body.classList.toggle('is-fullscreen-cinema', isFs);
         if (isFs) {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'خروج از تمام صفحه';
         } else {
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').catch(() => {});
+            }
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'تمام صفحه';
         }
@@ -843,7 +871,8 @@ window.addEventListener('load', () => {
         if (emojiPicker && !emojiPicker.contains(e.target) && e.target !== emojiBtn && !sidebar.contains(e.target) && e.target !== toggleBtn) {
             emojiPicker.style.display = 'none';
         }
-        if (window.innerWidth < 640 && isSidebarOpen && !sidebar.contains(e.target) && e.target !== toggleBtn && !customFsBtn?.contains(e.target)) {
+        const isCinemaMode = document.body.classList.contains('is-fullscreen-cinema') || !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (isCinemaMode && isSidebarOpen && !sidebar.contains(e.target) && e.target !== toggleBtn && !customFsBtn?.contains(e.target)) {
             toggleSidebar(false);
         }
     };
@@ -1125,9 +1154,6 @@ window.addEventListener('load', () => {
 
     function broadcast(data) {
         if (ws && ws.readyState === WebSocket.OPEN) {
-            roomMembers.forEach((user, id) => {
-                if (id !== myId) send(id, data);
-            });
             ws.send(JSON.stringify({ type: 'signal', data }));
         }
     }
@@ -1662,6 +1688,8 @@ window.addEventListener('load', () => {
         }
     }
 
+    const seenMessageIds = new Set();
+
     $('chat-send').onclick = () => {
         if (isUserMuted) {
             showToast('🔇 شما توسط میزبان در چت میوت شده‌اید', false);
@@ -1680,6 +1708,7 @@ window.addEventListener('load', () => {
             reply: replyingTo,
             time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
         };
+        seenMessageIds.add(msg.id);
         addMsg(msg, true);
         broadcast({ type: 'chat', data: msg });
         chatInput.value = '';
@@ -1691,6 +1720,12 @@ window.addEventListener('load', () => {
     function handleIncomingChatMessage(data, from) {
         const payload = data.data || data;
         if (!payload || !payload.text) return;
+        // Suppress own echoes
+        if (payload.userId === myId || from === myId) return;
+        // Suppress duplicates
+        if (payload.id && seenMessageIds.has(payload.id)) return;
+        if (payload.id) seenMessageIds.add(payload.id);
+
         addMsg(payload, false);
         if (!isSidebarOpen) {
             unreadCount++;
