@@ -536,6 +536,7 @@ window.addEventListener('load', () => {
 
     function updateSyncUI(auto) {
         isAutoSync = auto;
+        if (!syncToggleBtn) return;
         if (isAutoSync) {
             syncToggleBtn.innerHTML = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
             syncToggleBtn.title = 'سینک خودکار روشن (کلیک برای تغییر)';
@@ -550,15 +551,17 @@ window.addEventListener('load', () => {
     }
     updateSyncUI(true);
 
-    syncToggleBtn.onclick = () => {
-        const newState = !isAutoSync;
-        updateSyncUI(newState);
-        showToast(newState ? 'همگام‌سازی خودکار فعال شد' : 'حالت آزاد فعال شد', false);
-        if (partnerId) {
-            sendSync();
-            broadcast({ type: 'toggle_sync_mode', auto: newState });
-        }
-    };
+    if (syncToggleBtn) {
+        syncToggleBtn.onclick = () => {
+            const newState = !isAutoSync;
+            updateSyncUI(newState);
+            showToast(newState ? 'همگام‌سازی خودکار فعال شد' : 'حالت آزاد فعال شد', false);
+            if (partnerId) {
+                sendSync();
+                broadcast({ type: 'toggle_sync_mode', auto: newState });
+            }
+        };
+    }
 
     customFsBtn.onclick = () => {
         const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -754,12 +757,14 @@ window.addEventListener('load', () => {
         }
     };
 
-    myIdSpan.onclick = () => {
-        navigator.clipboard.writeText(myId);
-        const original = myIdSpan.textContent;
-        myIdSpan.textContent = "کپی شد!";
-        setTimeout(() => myIdSpan.textContent = original, 1500);
-    };
+    if (myIdSpan) {
+        myIdSpan.onclick = () => {
+            navigator.clipboard.writeText(myId);
+            const original = myIdSpan.textContent;
+            myIdSpan.textContent = "کپی شد!";
+            setTimeout(() => myIdSpan.textContent = original, 1500);
+        };
+    }
 
     function setStatus(msg, type) {
         statusText.textContent = msg;
@@ -1371,9 +1376,9 @@ window.addEventListener('load', () => {
 
     function setConnected() {
         updateConnectedStatus();
-        $('connect-btn').classList.add('hidden');
-        $('disconnect-btn').classList.remove('hidden');
-        partnerTimeDisplay.classList.remove('hidden');
+        $('connect-btn')?.classList.add('hidden');
+        $('disconnect-btn')?.classList.remove('hidden');
+        partnerTimeDisplay?.classList.remove('hidden');
         localStorage.setItem('syncnema_partner', partnerId);
         startHb();
     }
@@ -1386,11 +1391,11 @@ window.addEventListener('load', () => {
         pendingPartnerId = null;
         partnerId = '';
         roomPeers.clear();
-        partnerInput.value = '';
+        if (partnerInput) partnerInput.value = '';
         setStatus('قطع شد', 'err');
-        $('connect-btn').classList.remove('hidden');
-        $('disconnect-btn').classList.add('hidden');
-        partnerTimeDisplay.classList.add('hidden');
+        $('connect-btn')?.classList.remove('hidden');
+        $('disconnect-btn')?.classList.add('hidden');
+        partnerTimeDisplay?.classList.add('hidden');
         if (bufferBadge) bufferBadge.classList.add('hidden');
         if (hbInterval) clearInterval(hbInterval);
         if (clearStorage) localStorage.removeItem('syncnema_partner');
