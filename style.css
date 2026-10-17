@@ -861,5 +861,58 @@ emoji-picker {
     transform: scale(0.95);
 }
 
+/* ==========================================================================
+   Material 3 Modal Bottom Sheet System (< 768px)
+   ========================================================================== */
+.m3-drag-handle {
+    width: 44px;
+    height: 4px;
+    background-color: var(--md-sys-color-outline);
+    border-radius: 9999px;
+    margin: 0 auto 1.25rem auto;
+    display: none;
+}
+
+@keyframes sheet-open {
+    0% {
+        transform: translateY(100%);
+        opacity: 0.5;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    .modal-content.m3-bottom-sheet {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-top-left-radius: 32px !important;
+        border-top-right-radius: 32px !important;
+        max-height: 85dvh !important;
+        overflow-y: auto !important;
+        animation: sheet-open 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)) !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        background-color: var(--md-sys-color-surface-container) !important;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8) !important;
+    }
+
+    .m3-drag-handle {
+        display: block;
+    }
+}
+
+
 
 
