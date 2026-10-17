@@ -1058,6 +1058,37 @@ html, body {
     z-index: 50 !important;
 }
 
+/* ==========================================================================
+   Artplayer.js Material 3 Expressive Styling
+   ========================================================================== */
+.art-video-player {
+    font-family: 'Estedad', sans-serif !important;
+    background-color: #000 !important;
+}
+
+.art-video-player .art-bottom {
+    background: linear-gradient(to top, rgba(11, 14, 20, 0.95), rgba(11, 14, 20, 0.6) 60%, transparent) !important;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem)) !important;
+}
+
+.art-video-player .art-progress-played {
+    background-color: #38bdf8 !important;
+}
+
+.art-video-player .art-progress-indicator {
+    background-color: #38bdf8 !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.8) !important;
+}
+
+.art-video-player .art-subtitle {
+    font-family: 'Estedad', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: clamp(1.1rem, 3vw, 2.2rem) !important;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 2px #000, 0 0 1px #000 !important;
+    bottom: 3.5rem !important;
+}
+
+
 
 
 

@@ -23,6 +23,203 @@ window.addEventListener('load', () => {
 
     const videoPlayer = $('my-video');
     const ytContainer = $('youtube-player-container');
+    let artInstance = null;
+
+    function getPlayerCurrentTime() {
+        if (isYouTubeMode && ytPlayer?.getCurrentTime) return ytPlayer.getCurrentTime();
+        if (artInstance && artInstance.video) return artInstance.currentTime;
+        return videoPlayer.currentTime;
+    }
+
+    function getPlayerIsPlaying() {
+        if (isYouTubeMode && ytPlayer?.getPlayerState) return ytPlayer.getPlayerState() === 1;
+        if (artInstance && artInstance.video) return artInstance.playing;
+        return !videoPlayer.paused;
+    }
+
+    function getPlayerPlaybackRate() {
+        if (isYouTubeMode && ytPlayer?.getPlaybackRate) return ytPlayer.getPlaybackRate();
+        if (artInstance && artInstance.video) return artInstance.playbackRate;
+        return videoPlayer.playbackRate;
+    }
+
+    function getPlayerDuration() {
+        if (isYouTubeMode && ytPlayer?.getDuration) return ytPlayer.getDuration();
+        if (artInstance && artInstance.video) return artInstance.duration;
+        return videoPlayer.duration;
+    }
+
+    function setPlayerTime(t) {
+        if (isYouTubeMode && ytPlayer?.seekTo) {
+            ytPlayer.seekTo(t, true);
+        } else if (artInstance && artInstance.video) {
+            artInstance.currentTime = t;
+        } else {
+            videoPlayer.currentTime = t;
+        }
+    }
+
+    function playPlayer() {
+        if (isYouTubeMode && ytPlayer?.playVideo) {
+            ytPlayer.playVideo();
+        } else if (artInstance && artInstance.video) {
+            artInstance.play().catch(() => {});
+        } else {
+            videoPlayer.play().catch(() => {});
+        }
+    }
+
+    function pausePlayer() {
+        if (isYouTubeMode && ytPlayer?.pauseVideo) {
+            ytPlayer.pauseVideo();
+        } else if (artInstance && artInstance.video) {
+            artInstance.pause();
+        } else {
+            videoPlayer.pause();
+        }
+    }
+
+    function setPlayerPlaybackRate(rate) {
+        if (isYouTubeMode && ytPlayer?.setPlaybackRate) {
+            ytPlayer.setPlaybackRate(rate);
+        } else if (artInstance && artInstance.video) {
+            artInstance.playbackRate = rate;
+        } else {
+            videoPlayer.playbackRate = rate;
+        }
+    }
+
+    function initArtPlayer(url = '') {
+        if (typeof Artplayer === 'undefined') return null;
+        if (artInstance) {
+            if (url) artInstance.switchUrl(url);
+            return artInstance;
+        }
+        const container = $('artplayer-container');
+        if (!container) return null;
+
+        try {
+            artInstance = new Artplayer({
+                container: '#artplayer-container',
+                url: url || '',
+                theme: '#38bdf8',
+                volume: 0.8,
+                isLive: false,
+                muted: false,
+                autoplay: false,
+                pip: true,
+                autoSize: false,
+                autoMini: false,
+                screenshot: true,
+                setting: true,
+                loop: false,
+                flip: true,
+                playbackRate: true,
+                aspectRatio: true,
+                fullscreen: true,
+                fullscreenWeb: false,
+                subtitleOffset: true,
+                miniProgressBar: true,
+                mutex: true,
+                backdrop: true,
+                playsInline: true,
+                autoPlayback: true,
+                airplay: true,
+                lang: 'fa',
+                moreVideoAttr: {
+                    playsinline: true,
+                    'webkit-playsinline': true
+                },
+                fastForward: true,
+                lock: true,
+                hotkey: true,
+                customType: {
+                    m3u8: function (video, m3u8Url, art) {
+                        if (window.Hls && Hls.isSupported()) {
+                            if (art.hls) art.hls.destroy();
+                            const hls = new Hls({ enableWorker: true });
+                            hls.loadSource(m3u8Url);
+                            hls.attachMedia(video);
+                            art.hls = hls;
+                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                            video.src = m3u8Url;
+                        }
+                    }
+                }
+            });
+
+            artInstance.on('fullscreen', (state) => {
+                if (state) {
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock('landscape').catch(() => {});
+                    }
+                    document.body.classList.add('is-fullscreen-cinema');
+                } else {
+                    if (screen.orientation && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                    }
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock('portrait').catch(() => {});
+                    }
+                    document.body.classList.remove('is-fullscreen-cinema');
+                }
+            });
+
+            artInstance.on('video:play', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:pause', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:seeked', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:ratechange', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
+
+            artInstance.on('video:waiting', () => {
+                if (!isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
+                    isLocalBuffering = true;
+                    broadcast({ type: 'user_presence', time: artInstance.currentTime, isBuffering: true, isLive: isLiveMode });
+                }
+            });
+
+            const handleArtBufferEnd = () => {
+                if (isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
+                    isLocalBuffering = false;
+                    broadcast({ type: 'user_presence', time: artInstance.currentTime, isBuffering: false, isLive: isLiveMode });
+                }
+            };
+            artInstance.on('video:playing', handleArtBufferEnd);
+            artInstance.on('video:canplay', handleArtBufferEnd);
+
+            return artInstance;
+        } catch (e) {
+            console.warn('Artplayer init error:', e);
+            return null;
+        }
+    }
+
+    function loadVideoSource(url, isHls = false) {
+        destroyHls();
+        cleanupVideoBlob();
+
+        if (typeof Artplayer !== 'undefined') {
+            const art = initArtPlayer(url);
+            if (art) {
+                const isStream = isHls || (url && url.includes('.m3u8'));
+                const type = isStream ? 'm3u8' : undefined;
+                if (art.url !== url) {
+                    art.switchUrl(url, type).then(() => {
+                        art.play().catch(() => {});
+                    }).catch(() => {});
+                } else {
+                    art.play().catch(() => {});
+                }
+                return;
+            }
+        }
+
+        if (isHls || (url && url.includes('.m3u8'))) {
+            loadHlsStream(url);
+        } else {
+            videoPlayer.src = url;
+            videoPlayer.play().catch(() => {});
+        }
+    }
     const statusText = $('status-text');
     const connectionDot = $('connection-dot');
     const statusContainer = $('status-container');
@@ -328,9 +525,11 @@ window.addEventListener('load', () => {
         if (delta === 0) {
             applyCueShift(-subOffset);
             subOffset = 0;
+            if (artInstance) artInstance.subtitleOffset = 0;
         } else {
             subOffset += delta;
             applyCueShift(delta);
+            if (artInstance) artInstance.subtitleOffset = subOffset;
         }
         if (subOffsetDisplay) {
             const sign = subOffset > 0 ? '+' : '';
@@ -455,13 +654,10 @@ window.addEventListener('load', () => {
 
     $('admin-force-sync-btn')?.addEventListener('click', () => {
         if (!isHost) return;
-        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
-        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
-        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
         const clock = {
-            time: curTime,
-            playing: isPlaying,
-            rate: rate,
+            time: getPlayerCurrentTime(),
+            playing: getPlayerIsPlaying(),
+            rate: getPlayerPlaybackRate(),
             timestamp: Date.now()
         };
         currentRoomState.liveClock = clock;
@@ -920,11 +1116,13 @@ window.addEventListener('load', () => {
 
     function switchPlayer(youtube) {
         isYouTubeMode = youtube;
-        videoPlayer.style.display = youtube ? 'none' : 'block';
+        const artContainer = $('artplayer-container');
+        if (artContainer) artContainer.style.display = youtube ? 'none' : 'block';
+        videoPlayer.style.display = 'none';
         ytContainer.style.display = youtube ? 'block' : 'none';
         if (youtube) {
             destroyHls();
-            videoPlayer.pause();
+            pausePlayer();
         } else if (ytPlayer?.pauseVideo) {
             ytPlayer.pauseVideo();
         }
@@ -1022,29 +1220,23 @@ window.addEventListener('load', () => {
         const elapsed = Math.max(0, (now - (clock.timestamp || now)) / 1000);
         const hostLiveTime = clock.playing ? clock.time + (elapsed * (clock.rate || 1)) : clock.time;
 
-        const currentLocalTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
-        const isLocalPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
+        const currentLocalTime = getPlayerCurrentTime();
+        const isLocalPlaying = getPlayerIsPlaying();
         const drift = currentLocalTime - hostLiveTime;
 
         if (force || isLiveMode) {
             if (force || Math.abs(drift) > 2.0) {
                 ignoreSyncUntil = Date.now() + 1500;
-                if (isYouTubeMode && ytPlayer?.seekTo) {
-                    ytPlayer.seekTo(Math.max(0, hostLiveTime), true);
-                } else {
-                    videoPlayer.currentTime = Math.max(0, hostLiveTime);
-                }
+                setPlayerTime(Math.max(0, hostLiveTime));
             }
 
             if (clock.playing && !isLocalPlaying) {
                 ignoreSyncUntil = Date.now() + 1500;
-                if (isYouTubeMode && ytPlayer?.playVideo) ytPlayer.playVideo();
-                else videoPlayer.play().catch(() => {});
+                playPlayer();
                 setPlaybackStatus('پخش لایو');
             } else if (!clock.playing && isLocalPlaying) {
                 ignoreSyncUntil = Date.now() + 1500;
-                if (isYouTubeMode && ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
-                else videoPlayer.pause();
+                pausePlayer();
                 setPlaybackStatus('توقف لایو');
             }
 
@@ -1056,13 +1248,10 @@ window.addEventListener('load', () => {
 
     function broadcastLiveClock() {
         if (!canControlPlayback()) return;
-        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
-        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
-        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
         const clock = {
-            time: curTime,
-            playing: isPlaying,
-            rate: rate,
+            time: getPlayerCurrentTime(),
+            playing: getPlayerIsPlaying(),
+            rate: getPlayerPlaybackRate(),
             timestamp: Date.now()
         };
         currentRoomState.liveClock = clock;
@@ -1077,13 +1266,7 @@ window.addEventListener('load', () => {
             initYT(media.ytId);
         } else if (media.type === 'url' && media.url) {
             switchPlayer(false);
-            if (media.isHls || (media.url && media.url.includes('.m3u8'))) {
-                loadHlsStream(media.url);
-            } else {
-                cleanupVideoBlob();
-                videoPlayer.src = media.url;
-                videoPlayer.play().catch(() => {});
-            }
+            loadVideoSource(media.url, media.isHls);
         }
     }
 
@@ -1104,9 +1287,9 @@ window.addEventListener('load', () => {
             ...currentRoomState,
             hostId: myId,
             liveClock: {
-                time: isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime,
-                playing: isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused,
-                rate: isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate,
+                time: getPlayerCurrentTime(),
+                playing: getPlayerIsPlaying(),
+                rate: getPlayerPlaybackRate(),
                 timestamp: Date.now()
             },
             users: Array.from(roomMembers.values())
@@ -1423,13 +1606,7 @@ window.addEventListener('load', () => {
 
             case 'load_url': {
                 switchPlayer(false);
-                if (data.isHls || (data.url && data.url.includes('.m3u8'))) {
-                    loadHlsStream(data.url);
-                } else if (videoPlayer.src !== data.url) {
-                    destroyHls();
-                    cleanupVideoBlob();
-                    videoPlayer.src = data.url;
-                }
+                loadVideoSource(data.url, data.isHls);
                 setPlaybackStatus('ویدیو سینک شد');
                 break;
             }
@@ -1468,13 +1645,13 @@ window.addEventListener('load', () => {
 
         if (data.mode === 'html5' && !isYouTubeMode) {
             partnerDuration = data.dur;
-            if (Math.abs(videoPlayer.currentTime - data.time) > 1.5) videoPlayer.currentTime = data.time;
-            if (videoPlayer.playbackRate !== data.rate) videoPlayer.playbackRate = data.rate;
-            if (data.play && videoPlayer.paused) {
-                videoPlayer.play().catch(() => { });
+            if (Math.abs(getPlayerCurrentTime() - data.time) > 1.5) setPlayerTime(data.time);
+            if (getPlayerPlaybackRate() !== data.rate) setPlayerPlaybackRate(data.rate);
+            if (data.play && !getPlayerIsPlaying()) {
+                playPlayer();
                 setPlaybackStatus('پخش');
-            } else if (!data.play && !videoPlayer.paused) {
-                videoPlayer.pause();
+            } else if (!data.play && getPlayerIsPlaying()) {
+                pausePlayer();
                 setPlaybackStatus('توقف');
             }
         } else if (data.mode === 'yt' && isYouTubeMode && ytPlayer?.seekTo) {
@@ -1499,7 +1676,7 @@ window.addEventListener('load', () => {
         if (isYouTubeMode && ytPlayer?.getPlayerState) {
             broadcast({ type: 'sync', mode: 'yt', play: ytPlayer.getPlayerState() === 1, time: ytPlayer.getCurrentTime(), rate: ytPlayer.getPlaybackRate() });
         } else if (!isYouTubeMode) {
-            broadcast({ type: 'sync', mode: 'html5', play: !videoPlayer.paused, time: videoPlayer.currentTime, dur: videoPlayer.duration, rate: videoPlayer.playbackRate });
+            broadcast({ type: 'sync', mode: 'html5', play: getPlayerIsPlaying(), time: getPlayerCurrentTime(), dur: getPlayerDuration(), rate: getPlayerPlaybackRate() });
         }
     }
 
@@ -1962,6 +2139,14 @@ window.addEventListener('load', () => {
     }
 
     function addSubTrack(blobUrl, label) {
+        if (artInstance && artInstance.subtitle) {
+            try {
+                artInstance.subtitle.url = blobUrl;
+                artInstance.subtitle.show = true;
+            } catch (e) {
+                console.warn('Artplayer subtitle error:', e);
+            }
+        }
         const old = videoPlayer.querySelectorAll('track');
         old.forEach(t => {
             if (t.src && t.src.startsWith('blob:')) {
@@ -2001,11 +2186,9 @@ window.addEventListener('load', () => {
     $('video-file-input').onchange = (e) => {
         const f = e.target.files[0];
         if (f) {
-            destroyHls();
-            cleanupVideoBlob();
             switchPlayer(false);
             activeVideoBlobUrl = URL.createObjectURL(f);
-            videoPlayer.src = activeVideoBlobUrl;
+            loadVideoSource(activeVideoBlobUrl, false);
             setPlaybackStatus('فایل لود شد');
             document.getElementById('video-modal').classList.add('hidden');
             showToast(`🎬 فایل ${f.name} بارگذاری شد`, true);
@@ -2069,7 +2252,7 @@ window.addEventListener('load', () => {
             broadcast({ type: 'load_yt', id: videoId });
         } else if (val.includes('.m3u8')) {
             switchPlayer(false);
-            loadHlsStream(val);
+            loadVideoSource(val, true);
             currentRoomState.media = { type: 'url', url: val, isHls: true };
             broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: true });
@@ -2077,13 +2260,7 @@ window.addEventListener('load', () => {
             setPlaybackStatus('پخش فایل');
             showToast('✅ لینک مستقیم بارگذاری شد', true);
             switchPlayer(false);
-            destroyHls();
-            cleanupVideoBlob();
-            videoPlayer.src = val;
-            videoPlayer.play().catch(e => {
-                console.error(e);
-                showToast('⚠️ خطا در پخش. مطمئن شوید لینک مستقیم فایل (mp4/mkv/hls) است.', false);
-            });
+            loadVideoSource(val, false);
             currentRoomState.media = { type: 'url', url: val, isHls: false };
             broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: false });
@@ -2131,8 +2308,8 @@ window.addEventListener('load', () => {
                 if (st === 1) ytPlayer.pauseVideo();
                 else ytPlayer.playVideo();
             } else {
-                if (videoPlayer.paused) videoPlayer.play().catch(() => { });
-                else videoPlayer.pause();
+                if (!getPlayerIsPlaying()) playPlayer();
+                else pausePlayer();
             }
         } else if (e.code === 'ArrowRight') {
             e.preventDefault();
@@ -2145,30 +2322,25 @@ window.addEventListener('load', () => {
             customFsBtn.click();
         } else if (e.code === 'KeyM') {
             e.preventDefault();
-            videoPlayer.muted = !videoPlayer.muted;
-            showToast(videoPlayer.muted ? '🔇 صدا قطع شد' : '🔊 صدا وصل شد', true);
+            if (artInstance) {
+                artInstance.muted = !artInstance.muted;
+                showToast(artInstance.muted ? '🔇 صدا قطع شد' : '🔊 صدا وصل شد', true);
+            } else {
+                videoPlayer.muted = !videoPlayer.muted;
+                showToast(videoPlayer.muted ? '🔇 صدا قطع شد' : '🔊 صدا وصل شد', true);
+            }
         }
     });
 
     function seekRelative(delta) {
+        const cur = getPlayerCurrentTime();
+        setPlayerTime(Math.max(0, cur + delta));
         if (canControlPlayback()) {
-            if (isYouTubeMode && ytPlayer?.getCurrentTime) {
-                const cur = ytPlayer.getCurrentTime();
-                ytPlayer.seekTo(Math.max(0, cur + delta), true);
-            } else {
-                videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime + delta);
-            }
             broadcastLiveClock();
         } else {
             isLiveMode = false;
-            if (isYouTubeMode && ytPlayer?.getCurrentTime) {
-                const cur = ytPlayer.getCurrentTime();
-                ytPlayer.seekTo(Math.max(0, cur + delta), true);
-            } else {
-                videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime + delta);
-            }
             if (latestHostClock) {
-                const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+                const curTime = getPlayerCurrentTime();
                 const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
                 updateCatchUpUI(true, res.diff);
             }
@@ -2179,14 +2351,14 @@ window.addEventListener('load', () => {
     videoPlayer.addEventListener('waiting', () => {
         if (!isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
             isLocalBuffering = true;
-            broadcast({ type: 'user_presence', time: videoPlayer.currentTime, isBuffering: true, isLive: isLiveMode });
+            broadcast({ type: 'user_presence', time: getPlayerCurrentTime(), isBuffering: true, isLive: isLiveMode });
         }
     });
 
     const handleBufferEnd = () => {
         if (isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
             isLocalBuffering = false;
-            broadcast({ type: 'user_presence', time: videoPlayer.currentTime, isBuffering: false, isLive: isLiveMode });
+            broadcast({ type: 'user_presence', time: getPlayerCurrentTime(), isBuffering: false, isLive: isLiveMode });
         }
     };
     videoPlayer.addEventListener('playing', handleBufferEnd);
@@ -2194,9 +2366,9 @@ window.addEventListener('load', () => {
 
     // Watchdog & Periodic Sync loop
     setInterval(() => {
-        const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
-        const isPlaying = isYouTubeMode && ytPlayer?.getPlayerState ? ytPlayer.getPlayerState() === 1 : !videoPlayer.paused;
-        const rate = isYouTubeMode && ytPlayer?.getPlaybackRate ? ytPlayer.getPlaybackRate() : videoPlayer.playbackRate;
+        const curTime = getPlayerCurrentTime();
+        const isPlaying = getPlayerIsPlaying();
+        const rate = getPlayerPlaybackRate();
 
         if (isHost) {
             const clock = {
@@ -2222,7 +2394,7 @@ window.addEventListener('load', () => {
     // Regular Presence Broadcast (every 2.5s)
     setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-            const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+            const curTime = getPlayerCurrentTime();
             broadcast({
                 type: 'user_presence',
                 time: curTime,
@@ -2234,7 +2406,7 @@ window.addEventListener('load', () => {
 
     // High precision reaction loop
     setInterval(() => {
-        const currentTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+        const currentTime = getPlayerCurrentTime();
 
         pendingReactions.forEach(r => {
             const diff = currentTime - r.time;
@@ -2255,7 +2427,7 @@ window.addEventListener('load', () => {
         } else {
             isLiveMode = false;
             if (latestHostClock) {
-                const curTime = isYouTubeMode && ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : videoPlayer.currentTime;
+                const curTime = getPlayerCurrentTime();
                 const res = calculateDesync(curTime, latestHostClock.time, latestHostClock.timestamp);
                 updateCatchUpUI(true, res.diff);
             } else {
