@@ -1525,10 +1525,10 @@ window.addEventListener('load', () => {
 
     function addMsg(data, isMe) {
         const div = document.createElement('div');
-        div.className = `p-2.5 rounded-2xl text-sm break-words relative group mb-2 border backdrop-blur-md shadow-sm transition-all ${
+        div.className = `p-3 rounded-2xl text-sm break-words relative group mb-2.5 transition-all max-w-[85%] ${
             isMe 
-                ? 'bg-cyan-500/20 border-cyan-400/30 text-cyan-50 mr-4 rounded-br-sm' 
-                : 'bg-white/[0.08] border-white/10 text-slate-100 ml-4 rounded-bl-sm'
+                ? 'm3-chat-bubble-me mr-2' 
+                : 'm3-chat-bubble-other ml-2'
         }`;
 
         // Header for sender identity
