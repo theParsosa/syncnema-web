@@ -36,7 +36,7 @@ console.log('✓ 3. Artplayer Fullscreen & Chat Control Integration Verified');
 // 4. Fullscreen Chat Sidebar Stacking & Layout in style.css
 assert(styleCss.includes(':fullscreen #chat-sidebar') || styleCss.includes('.is-fullscreen-cinema #chat-sidebar'),
     'style.css must define fullscreen chat sidebar styles');
-assert(styleCss.includes('z-index: 90 !important;') || styleCss.includes('z-index: 95 !important;'),
+assert(/z-index:\s*(?:9[0-9]|100|[1-9][0-9]{2,})\s*!important;/.test(styleCss),
     'style.css must elevate fullscreen chat sidebar to z-index 90 or higher');
 console.log('✓ 4. Fullscreen Chat Stacking Context Verified');
 

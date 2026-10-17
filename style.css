@@ -467,8 +467,12 @@ body {
 }
 
 :fullscreen #chat-sidebar,
+:-webkit-full-screen #chat-sidebar,
 .is-fullscreen #chat-sidebar,
-.is-fullscreen-cinema #chat-sidebar {
+.is-fullscreen-cinema #chat-sidebar,
+.art-fullscreen-web #chat-sidebar,
+.artplayer-app.art-fullscreen #chat-sidebar,
+.artplayer-app.art-fullscreen-web #chat-sidebar {
     position: absolute !important;
     right: 1.25rem !important;
     top: 1.25rem !important;
@@ -477,7 +481,7 @@ body {
     max-width: calc(100vw - 2.5rem) !important;
     height: auto !important;
     max-height: calc(100vh - 6.75rem) !important;
-    z-index: 100 !important;
+    z-index: 99999 !important;
     border-radius: 1.25rem !important;
     background-color: var(--md-sys-color-surface-container-low) !important;
     border: 1px solid var(--md-sys-color-outline) !important;
@@ -485,8 +489,12 @@ body {
 }
 
 :fullscreen #chat-sidebar.sidebar-closed,
+:-webkit-full-screen #chat-sidebar.sidebar-closed,
 .is-fullscreen #chat-sidebar.sidebar-closed,
-.is-fullscreen-cinema #chat-sidebar.sidebar-closed {
+.is-fullscreen-cinema #chat-sidebar.sidebar-closed,
+.art-fullscreen-web #chat-sidebar.sidebar-closed,
+.artplayer-app.art-fullscreen #chat-sidebar.sidebar-closed,
+.artplayer-app.art-fullscreen-web #chat-sidebar.sidebar-closed {
     transform: translateX(calc(100% + 5rem)) !important;
     opacity: 0 !important;
     pointer-events: none !important;
@@ -494,8 +502,12 @@ body {
 }
 
 :fullscreen #chat-sidebar:not(.sidebar-closed),
+:-webkit-full-screen #chat-sidebar:not(.sidebar-closed),
 .is-fullscreen #chat-sidebar:not(.sidebar-closed),
-.is-fullscreen-cinema #chat-sidebar:not(.sidebar-closed) {
+.is-fullscreen-cinema #chat-sidebar:not(.sidebar-closed),
+.art-fullscreen-web #chat-sidebar:not(.sidebar-closed),
+.artplayer-app.art-fullscreen #chat-sidebar:not(.sidebar-closed),
+.artplayer-app.art-fullscreen-web #chat-sidebar:not(.sidebar-closed) {
     transform: translateX(0) !important;
     opacity: 1 !important;
     pointer-events: auto !important;
@@ -528,8 +540,12 @@ body {
     }
 
     :fullscreen #chat-sidebar,
+    :-webkit-full-screen #chat-sidebar,
     .is-fullscreen #chat-sidebar,
-    .is-fullscreen-cinema #chat-sidebar {
+    .is-fullscreen-cinema #chat-sidebar,
+    .art-fullscreen-web #chat-sidebar,
+    .artplayer-app.art-fullscreen #chat-sidebar,
+    .artplayer-app.art-fullscreen-web #chat-sidebar {
         right: 0.75rem !important;
         bottom: 4.5rem !important;
         top: 0.75rem !important;
@@ -537,7 +553,7 @@ body {
         max-width: calc(100vw - 1.5rem) !important;
         height: auto !important;
         max-height: calc(100vh - 5.25rem) !important;
-        z-index: 90 !important;
+        z-index: 99999 !important;
     }
 
     .is-fullscreen-cinema #close-sidebar-btn,

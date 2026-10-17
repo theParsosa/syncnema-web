@@ -253,6 +253,12 @@ function initSyncnemaApp() {
                     }
                     document.body.classList.remove('is-fullscreen-cinema');
                 }
+                syncChatSidebarStacking();
+            });
+
+            artInstance.on('fullscreenWeb', (state) => {
+                document.body.classList.toggle('is-fullscreen-cinema', state);
+                syncChatSidebarStacking();
             });
 
             const applyPending = () => {
@@ -668,24 +674,38 @@ function initSyncnemaApp() {
         return `${hrs}:${mins}:${secs}`;
     }
 
+    function sanitizeCueText(text) {
+        if (!text) return '';
+        return text
+            .replace(/\\N/gi, '\n')
+            .replace(/\\n/gi, '\n')
+            .replace(/\\h/gi, ' ')
+            .replace(/\{[^}]+\}/g, '');
+    }
+
     function buildVttFromCues(cues) {
         let vtt = 'WEBVTT\n\n';
         cues.forEach((c, idx) => {
             const start = formatVttTimestamp(c.time);
             const end = formatVttTimestamp(c.time + (c.duration || 3000));
-            vtt += `${idx + 1}\n${start} --> ${end}\n${c.text}\n\n`;
+            const cleanText = sanitizeCueText(c.text);
+            vtt += `${idx + 1}\n${start} --> ${end}\n${cleanText}\n\n`;
         });
         return vtt;
     }
 
     async function parseMkvSubtitles(source) {
-        if (typeof MatroskaSubtitles === 'undefined') return;
+        const SubLib = (typeof window !== 'undefined' && (window.MatroskaSubtitles || window.matroskaSubtitles)) || (typeof MatroskaSubtitles !== 'undefined' ? MatroskaSubtitles : null);
+        if (!SubLib || !source) return;
         mkvParsedTracks = [];
 
         try {
-            const parser = new MatroskaSubtitles.SubtitleParser();
+            const SubtitleParser = SubLib.SubtitleParser;
+            if (!SubtitleParser) return;
+            const parser = new SubtitleParser();
 
             parser.once('tracks', (tracks) => {
+                let foundTracks = 0;
                 tracks.forEach(t => {
                     const isFa = t.language === 'fas' || t.language === 'per' || t.language === 'fa';
                     const trackObj = {
@@ -697,10 +717,15 @@ function initSyncnemaApp() {
                         blobUrl: null
                     };
                     mkvParsedTracks.push(trackObj);
+                    foundTracks++;
                 });
                 detectSoftsubs();
+                if (foundTracks > 0) {
+                    showToast(`🎬 ${foundTracks} زیرنویس داخلی شناسایی شد`, false);
+                }
             });
 
+            let subtitleUpdateDebounce = null;
             parser.on('subtitle', (sub, trackNumber) => {
                 const target = mkvParsedTracks.find(t => t.number === trackNumber);
                 if (target) {
@@ -709,6 +734,16 @@ function initSyncnemaApp() {
                         URL.revokeObjectURL(target.blobUrl);
                         target.blobUrl = null;
                     }
+                    const activeSoftsub = availableSoftsubs[currentSoftsubIndex];
+                    if (activeSoftsub && activeSoftsub.type === 'mkv' && activeSoftsub.mkvTrack === target) {
+                        clearTimeout(subtitleUpdateDebounce);
+                        subtitleUpdateDebounce = setTimeout(() => {
+                            const vtt = buildVttFromCues(target.cues);
+                            target.blobUrl = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
+                            activeSubBlobUrls.push(target.blobUrl);
+                            addSubTrack(target.blobUrl, target.name);
+                        }, 500);
+                    }
                 }
             });
 
@@ -716,10 +751,24 @@ function initSyncnemaApp() {
                 const buffer = await source.arrayBuffer();
                 parser.write(new Uint8Array(buffer));
             } else if (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) {
-                const res = await fetch(source, {
+                let res = await fetch(source, {
                     headers: { Range: 'bytes=0-25000000' }
                 }).catch(() => null);
-                if (res && (res.status === 200 || res.status === 206)) {
+                if (!res || (!res.ok && res.status !== 206)) {
+                    res = await fetch(source).catch(() => null);
+                }
+                if (res && res.body) {
+                    const reader = res.body.getReader();
+                    let bytesRead = 0;
+                    const maxBytes = 25 * 1024 * 1024;
+                    while (bytesRead < maxBytes) {
+                        const { done, value } = await reader.read();
+                        if (done || !value) break;
+                        parser.write(value);
+                        bytesRead += value.length;
+                    }
+                    try { reader.cancel(); } catch (e) {}
+                } else if (res && (res.status === 200 || res.status === 206)) {
                     const buffer = await res.arrayBuffer();
                     parser.write(new Uint8Array(buffer));
                 }
@@ -1177,6 +1226,9 @@ function initSyncnemaApp() {
 
     function toggleSidebar(open) {
         isSidebarOpen = open;
+        if (typeof syncChatSidebarStacking === 'function') {
+            syncChatSidebarStacking();
+        }
         if (open) {
             applyTopFade();
             sidebar.classList.remove('sidebar-closed');
@@ -1313,6 +1365,7 @@ function initSyncnemaApp() {
             }
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'تمام صفحه';
+        }
         const artFsBtn = document.querySelector('.art-custom-fs-btn');
         if (artFsBtn) {
             artFsBtn.title = isFs ? 'خروج از تمام صفحه' : 'تمام صفحه';
@@ -1324,9 +1377,13 @@ function initSyncnemaApp() {
 
     function syncChatSidebarStacking() {
         const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-        if (fsEl && !fsEl.contains(sidebar)) {
-            fsEl.appendChild(sidebar);
-        } else if (!fsEl && sidebar.parentElement !== cinemaContainer) {
+        const artApp = document.querySelector('.artplayer-app') || (artInstance && artInstance.template && artInstance.template.$player);
+        const isArtWebFs = !!(artApp && artApp.classList.contains('art-fullscreen-web'));
+
+        const targetContainer = fsEl || (isArtWebFs ? artApp : cinemaContainer);
+        if (targetContainer && !targetContainer.contains(sidebar)) {
+            targetContainer.appendChild(sidebar);
+        } else if (!fsEl && !isArtWebFs && sidebar.parentElement !== cinemaContainer) {
             cinemaContainer.appendChild(sidebar);
         }
     }
