@@ -983,6 +983,63 @@ emoji-picker {
     }
 }
 
+/* ==========================================================================
+   Mode B: Cinema Fullscreen & Landscape Immersion
+   ========================================================================== */
+.is-fullscreen-cinema #m3-desktop-header,
+.is-fullscreen-cinema #m3-top-chip,
+.is-fullscreen-cinema #m3-mobile-dock,
+.is-fullscreen-cinema #m3-bottom-bar {
+    display: none !important;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    #m3-desktop-header,
+    #m3-top-chip,
+    #m3-mobile-dock,
+    #m3-bottom-bar {
+        display: none !important;
+    }
+}
+
+.is-fullscreen-cinema #cinema-container,
+:fullscreen #cinema-container,
+.is-fullscreen #cinema-container {
+    padding-top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+}
+
+.is-fullscreen-cinema #player-viewport,
+:fullscreen #player-viewport,
+.is-fullscreen #player-viewport {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100vh !important;
+    aspect-ratio: auto !important;
+}
+
+/* In Cinema mode, 1-tap fast emoji ribbon stays accessible in bottom corner */
+.is-fullscreen-cinema #m3-emoji-ribbon,
+:fullscreen #m3-emoji-ribbon,
+.is-fullscreen #m3-emoji-ribbon {
+    display: flex !important;
+    bottom: 1.25rem !important;
+    z-index: 50 !important;
+}
+
+/* Floating chat overlay stream in cinema mode */
+.is-fullscreen-cinema #chat-stream-overlay,
+:fullscreen #chat-stream-overlay,
+.is-fullscreen #chat-stream-overlay {
+    bottom: 4.5rem !important;
+    right: 1.25rem !important;
+    z-index: 50 !important;
+}
+
+
 
 
 

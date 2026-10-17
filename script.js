@@ -635,28 +635,37 @@ window.addEventListener('load', () => {
         };
     }
 
-    customFsBtn.onclick = () => {
-        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        if (!isFs) {
+    function enterCinemaFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
             if (cinemaContainer.requestFullscreen) {
-                cinemaContainer.requestFullscreen().catch(err => showToast('⚠️ ' + err.message, false));
+                cinemaContainer.requestFullscreen().catch(() => {});
             } else if (cinemaContainer.webkitRequestFullscreen) {
                 cinemaContainer.webkitRequestFullscreen();
             } else if (videoPlayer.webkitEnterFullscreen) {
                 videoPlayer.webkitEnterFullscreen();
             }
+        }
+        document.body.classList.add('is-fullscreen-cinema');
+    }
+
+    customFsBtn.onclick = () => {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!isFs) {
+            enterCinemaFullscreen();
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
             }
+            document.body.classList.remove('is-fullscreen-cinema');
         }
     };
 
     const updateFullscreenState = () => {
         const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
         cinemaContainer.classList.toggle('is-fullscreen', isFs);
+        document.body.classList.toggle('is-fullscreen-cinema', isFs);
         if (isFs) {
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'خروج از تمام صفحه';
@@ -666,6 +675,16 @@ window.addEventListener('load', () => {
         }
     };
     ['fullscreenchange', 'webkitfullscreenchange'].forEach(evt => document.addEventListener(evt, updateFullscreenState));
+
+    window.addEventListener('orientationchange', () => {
+        if (window.orientation === 90 || window.orientation === -90) {
+            document.body.classList.add('is-fullscreen-cinema');
+        } else {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                document.body.classList.remove('is-fullscreen-cinema');
+            }
+        }
+    });
 
     // SECURITY & CINEJOY GLASS: Render toasts with SVG badges
     function showToast(text, isMe) {
