@@ -11,7 +11,7 @@ function onYouTubeIframeAPIReady() {
     }
 }
 
-window.addEventListener('load', () => {
+function initSyncnemaApp() {
     const $ = (id) => document.getElementById(id);
     const randomId = () => Math.random().toString(36).substring(2, 9);
     const formatTime = (s) => {
@@ -1201,6 +1201,15 @@ window.addEventListener('load', () => {
     window.initYTSafe = function (id) {
         if (!isYTReady || typeof YT === 'undefined' || !YT.Player) {
             pendingYTId = id;
+            if (!document.getElementById('yt-iframe-api')) {
+                const s = document.createElement('script');
+                s.id = 'yt-iframe-api';
+                s.src = 'https://www.youtube.com/iframe_api';
+                s.onerror = () => {
+                    showToast('⚠️ امکان دسترسی به یوتیوب وجود ندارد (ممکن است مسدود باشد)', false);
+                };
+                document.head.appendChild(s);
+            }
             return;
         }
 
@@ -1450,8 +1459,21 @@ window.addEventListener('load', () => {
 
         setStatus('در حال اتصال...', 'yellow');
 
+        let isOpened = false;
+        const connTimer = setTimeout(() => {
+            if (!isOpened && ws && ws.readyState === WebSocket.CONNECTING) {
+                console.warn('WebSocket connection timed out (7s). Retrying...');
+                try { ws.close(); } catch (e) {}
+                const delay = Math.min(3000, 1000 + (500 * reconnectAttempts++));
+                setStatus('تلاش مجدد اتصال...', 'yellow');
+                setTimeout(connect, delay);
+            }
+        }, 7000);
+
         ws = new WebSocket(getWsUrl());
         ws.onopen = () => {
+            isOpened = true;
+            clearTimeout(connTimer);
             ws.send(JSON.stringify({ type: 'register', id: myId }));
             reconnectAttempts = 0;
             setStatus('متصل به اتاق', 'ok');
@@ -1481,6 +1503,7 @@ window.addEventListener('load', () => {
         };
 
         ws.onerror = () => {
+            clearTimeout(connTimer);
             console.log('WS Error');
         };
 
@@ -1498,6 +1521,7 @@ window.addEventListener('load', () => {
         };
 
         ws.onclose = () => {
+            clearTimeout(connTimer);
             if (wsHeartbeatInterval) clearInterval(wsHeartbeatInterval);
             const delay = Math.min(5000, 1000 + (1000 * reconnectAttempts++));
             setStatus(`قطع (${reconnectAttempts})`, 'err');
@@ -2607,4 +2631,11 @@ window.addEventListener('load', () => {
     ['play', 'pause', 'seeked', 'ratechange'].forEach(evt => videoPlayer.addEventListener(evt, () => {
         if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction();
     }));
-});
+}
+
+// Instant startup on DOMContentLoaded (decoupled from slow/hanging external CDN scripts)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSyncnemaApp);
+} else {
+    initSyncnemaApp();
+}
