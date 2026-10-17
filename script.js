@@ -509,6 +509,18 @@ window.addEventListener('load', () => {
         openProfileModal();
     });
 
+    // Auto-reveal controls on interaction in landscape mode
+    let controlsTimer = null;
+    function revealControlsTemporarily() {
+        document.body.classList.add('show-controls');
+        if (controlsTimer) clearTimeout(controlsTimer);
+        controlsTimer = setTimeout(() => {
+            document.body.classList.remove('show-controls');
+        }, 3500);
+    }
+    window.addEventListener('touchstart', revealControlsTemporarily, { passive: true });
+    window.addEventListener('mousemove', revealControlsTemporarily, { passive: true });
+
     window.addEventListener('beforeunload', () => {
         if (roomPeers.size > 0 || partnerId) {
             broadcast({ type: 'disconnect' });

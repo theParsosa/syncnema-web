@@ -137,45 +137,34 @@ body {
    VisionOS Liquid Glass Core Classes
    ========================================================================== */
 
-/* Floating Island Container - Cinejoy Smoky Charcoal Frosted Glass */
+/* Floating Island Container - Material 3 Expressive Tonal Surface */
 .glass-island {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(15, 17, 23, 0.78);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 
-        0 20px 50px -10px rgba(0, 0, 0, 0.7),
-        0 0 0 1px rgba(255, 255, 255, 0.04),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+    background-color: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .glass-island:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%), rgba(18, 21, 28, 0.88);
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 
-        0 24px 60px -10px rgba(0, 0, 0, 0.8),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.32);
+    background-color: var(--md-sys-color-surface-container-high);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7);
 }
 
-/* Cinejoy Style Pill Buttons */
+/* Cinejoy Style Pill Buttons - M3 Expressive Pill Tokens */
 .glass-btn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--md-sys-color-outline);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
     color: #e2e8f0;
     transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
 }
 .glass-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background-color: rgba(255, 255, 255, 0.12);
     border-color: rgba(255, 255, 255, 0.25);
     color: #ffffff;
     transform: translateY(-1px);
-    box-shadow: 
-        0 6px 18px rgba(0, 0, 0, 0.35),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .glass-btn:active {
     transform: translateY(0);
@@ -912,6 +901,41 @@ emoji-picker {
         display: block;
     }
 }
+
+/* ==========================================================================
+   Landscape Cinema Mode Auto-Fullscreen & Auto-Hide Rules
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+    #top-bar,
+    #m3-bottom-bar,
+    #m3-top-chip {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    body.show-controls #top-bar,
+    body:hover #top-bar,
+    body.show-controls #m3-bottom-bar,
+    body.show-controls #m3-top-chip {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #m3-emoji-ribbon {
+        bottom: 0.75rem !important;
+        left: 0.75rem !important;
+        right: auto !important;
+        transform: scale(0.9);
+        transform-origin: bottom left;
+    }
+
+    #chat-stream-overlay {
+        bottom: 1rem !important;
+        right: 1rem !important;
+    }
+}
+
 
 
 
