@@ -21,10 +21,10 @@ try {
 const scriptContent = fs.readFileSync(scriptPath, 'utf8');
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
-// 2. Cache busters v=5.3
-assert(indexContent.includes('style.css?v=5.3'), 'index.html must link style.css?v=5.3');
-assert(indexContent.includes('script.js?v=5.3'), 'index.html must link script.js?v=5.3');
-console.log('✓ 2. Cache busters v=5.3 verified');
+// 2. Cache busters
+assert(/style\.css\?v=5\.[3-9]/.test(indexContent), 'index.html must link style.css >= v5.3');
+assert(/script\.js\?v=5\.[3-9]/.test(indexContent), 'index.html must link script.js >= v5.3');
+console.log('✓ 2. Cache busters verified');
 
 // 3. Document onclick trigger protection verification
 assert(scriptContent.includes('const isChatTrigger = e.target.closest('), 

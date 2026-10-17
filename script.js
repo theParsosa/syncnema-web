@@ -158,6 +158,12 @@ function initSyncnemaApp() {
                 fullscreen: false,
                 fullscreenWeb: false,
                 subtitleOffset: true,
+                subtitle: {
+                    url: '',
+                    type: 'vtt',
+                    encoding: 'utf-8',
+                    escape: false
+                },
                 miniProgressBar: true,
                 mutex: true,
                 backdrop: true,
@@ -2945,26 +2951,51 @@ function initSyncnemaApp() {
         }
     }
 
+    function srtToVtt(srt) {
+        if (!srt) return 'WEBVTT\n\n';
+        if (srt.trim().startsWith('WEBVTT')) return srt;
+        let vtt = 'WEBVTT\n\n';
+        const clean = srt.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+        const blocks = clean.split(/\n\s*\n/);
+        let cueIdx = 1;
+        blocks.forEach(block => {
+            const lines = block.split('\n');
+            const timeIndex = lines.findIndex(l => l.includes('-->'));
+            if (timeIndex !== -1) {
+                const timeLine = lines[timeIndex].replace(/,/g, '.').trim();
+                const textLines = lines.slice(timeIndex + 1).join('\n').trim();
+                if (textLines) {
+                    vtt += `${cueIdx}\n${timeLine}\n${textLines}\n\n`;
+                    cueIdx++;
+                }
+            }
+        });
+        return vtt;
+    }
+
     function addSubTrack(blobUrl, label) {
         if (artInstance && artInstance.subtitle) {
             try {
-                artInstance.subtitle.url = blobUrl;
+                artInstance.subtitle.switch(blobUrl, { type: 'vtt' });
                 artInstance.subtitle.show = true;
             } catch (e) {
-                console.warn('Artplayer subtitle error:', e);
+                console.warn('Artplayer subtitle switch error:', e);
             }
         }
-        const old = videoPlayer.querySelectorAll('track');
-        old.forEach(t => {
-            if (t.src && t.src.startsWith('blob:')) {
-                URL.revokeObjectURL(t.src);
+        const targetVideo = (artInstance && artInstance.video) || videoPlayer;
+        if (targetVideo) {
+            const old = targetVideo.querySelectorAll('track');
+            old.forEach(t => t.remove());
+            const track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.label = label || 'Subtitle';
+            track.src = blobUrl;
+            track.default = true;
+            targetVideo.appendChild(track);
+            if (targetVideo.textTracks && targetVideo.textTracks[0]) {
+                targetVideo.textTracks[0].mode = 'showing';
             }
-            t.remove();
-        });
-        const track = document.createElement('track');
-        track.kind = 'subtitles'; track.label = label; track.src = blobUrl; track.default = true;
-        videoPlayer.appendChild(track);
-        if (videoPlayer.textTracks[0]) videoPlayer.textTracks[0].mode = 'showing';
+        }
     }
 
     async function processSubtitleUrl(url, shouldBroadcast = true) {
@@ -2975,9 +3006,9 @@ function initSyncnemaApp() {
             if (!response || !response.ok) response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
             if (!response.ok) throw new Error('Fail');
             let text = await response.text();
-            if (!text.trim().startsWith('WEBVTT')) text = 'WEBVTT\n\n' + text.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/^\d+\s*$/gm, '');
+            const vtt = srtToVtt(text);
             cleanupSubBlobs();
-            const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/vtt' }));
+            const blobUrl = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt;charset=utf-8' }));
             activeSubBlobUrls.push(blobUrl);
             addSubTrack(blobUrl, 'Link Sub');
             setPlaybackStatus('زیرنویس فعال');
@@ -3012,21 +3043,19 @@ function initSyncnemaApp() {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const buffer = ev.target.result;
-                let content = '';
+                let rawText = '';
                 try {
-                    content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                    rawText = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
                 } catch {
                     try {
-                        content = new TextDecoder('windows-1256').decode(buffer);
+                        rawText = new TextDecoder('windows-1256').decode(buffer);
                     } catch {
-                        content = new TextDecoder().decode(buffer);
+                        rawText = new TextDecoder().decode(buffer);
                     }
                 }
-                if (f.name.endsWith('.srt') || !content.trim().startsWith('WEBVTT')) {
-                    content = 'WEBVTT\n\n' + content.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/^\d+\s*$/gm, '');
-                }
+                const vttContent = srtToVtt(rawText);
                 cleanupSubBlobs();
-                const blobUrl = URL.createObjectURL(new Blob([content], { type: 'text/vtt;charset=utf-8' }));
+                const blobUrl = URL.createObjectURL(new Blob([vttContent], { type: 'text/vtt;charset=utf-8' }));
                 activeSubBlobUrls.push(blobUrl);
                 addSubTrack(blobUrl, 'Local Sub');
                 setPlaybackStatus('زیرنویس لود شد');
@@ -3035,7 +3064,7 @@ function initSyncnemaApp() {
                 showToast('✅ فایل زیرنویس بارگذاری شد', true);
 
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    broadcast({ type: 'sync_sub_file', content: content, name: f.name });
+                    broadcast({ type: 'sync_sub_file', content: vttContent, name: f.name });
                     showToast('زیرنویس برای همراهان اتاق ارسال شد', false);
                 }
             };
