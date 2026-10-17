@@ -477,12 +477,29 @@ body {
     max-width: calc(100vw - 2.5rem) !important;
     height: auto !important;
     max-height: calc(100vh - 6.75rem) !important;
-    z-index: 90 !important;
-    pointer-events: auto !important;
+    z-index: 100 !important;
     border-radius: 1.25rem !important;
     background-color: var(--md-sys-color-surface-container-low) !important;
     border: 1px solid var(--md-sys-color-outline) !important;
     box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95) !important;
+}
+
+:fullscreen #chat-sidebar.sidebar-closed,
+.is-fullscreen #chat-sidebar.sidebar-closed,
+.is-fullscreen-cinema #chat-sidebar.sidebar-closed {
+    transform: translateX(calc(100% + 5rem)) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    display: none !important;
+}
+
+:fullscreen #chat-sidebar:not(.sidebar-closed),
+.is-fullscreen #chat-sidebar:not(.sidebar-closed),
+.is-fullscreen-cinema #chat-sidebar:not(.sidebar-closed) {
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
 }
 
 :fullscreen #catch-up-btn,
@@ -987,7 +1004,7 @@ html, body {
     }
 
     /* In portrait browsing mode, sidebar is permanently docked below player and fills lower space */
-    #chat-sidebar {
+    body:not(.is-fullscreen-cinema) #cinema-container:not(:fullscreen) #chat-sidebar {
         display: flex !important;
         position: relative !important;
         top: auto !important;

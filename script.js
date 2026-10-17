@@ -155,7 +155,7 @@ function initSyncnemaApp() {
                 flip: true,
                 playbackRate: true,
                 aspectRatio: true,
-                fullscreen: true,
+                fullscreen: false,
                 fullscreenWeb: false,
                 subtitleOffset: true,
                 miniProgressBar: true,
@@ -183,6 +183,22 @@ function initSyncnemaApp() {
                         </button>`,
                         click: function () {
                             toggleSidebar(!isSidebarOpen);
+                        }
+                    },
+                    {
+                        name: 'custom-fullscreen',
+                        position: 'right',
+                        index: 70,
+                        html: `<button type="button" class="art-custom-fs-btn" style="display:flex;align-items:center;justify-content:center;background:none;border:none;color:#cbd5e1;cursor:pointer;padding:0 6px;height:100%;" title="تمام‌صفحه">
+                            <svg class="art-fs-icon w-5 h-5" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                        </button>`,
+                        click: function () {
+                            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                            if (!isFs) {
+                                enterCinemaFullscreen();
+                            } else {
+                                exitCinemaFullscreen();
+                            }
                         }
                     }
                 ],
@@ -642,13 +658,96 @@ function initSyncnemaApp() {
     // Softsub (Embedded Subtitles) Management
     let availableSoftsubs = [];
     let currentSoftsubIndex = -1;
+    let mkvParsedTracks = [];
+
+    function formatVttTimestamp(ms) {
+        const totalSec = Math.max(0, ms / 1000);
+        const hrs = Math.floor(totalSec / 3600).toString().padStart(2, '0');
+        const mins = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
+        const secs = (totalSec % 60).toFixed(3).padStart(6, '0');
+        return `${hrs}:${mins}:${secs}`;
+    }
+
+    function buildVttFromCues(cues) {
+        let vtt = 'WEBVTT\n\n';
+        cues.forEach((c, idx) => {
+            const start = formatVttTimestamp(c.time);
+            const end = formatVttTimestamp(c.time + (c.duration || 3000));
+            vtt += `${idx + 1}\n${start} --> ${end}\n${c.text}\n\n`;
+        });
+        return vtt;
+    }
+
+    async function parseMkvSubtitles(source) {
+        if (typeof MatroskaSubtitles === 'undefined') return;
+        mkvParsedTracks = [];
+
+        try {
+            const parser = new MatroskaSubtitles.SubtitleParser();
+
+            parser.once('tracks', (tracks) => {
+                tracks.forEach(t => {
+                    const isFa = t.language === 'fas' || t.language === 'per' || t.language === 'fa';
+                    const trackObj = {
+                        number: t.number,
+                        name: t.name || (isFa ? 'فارسی (داخلی)' : (t.language ? `${t.language} (داخلی)` : `زیرنویس ${t.number}`)),
+                        language: t.language || 'und',
+                        type: t.type,
+                        cues: [],
+                        blobUrl: null
+                    };
+                    mkvParsedTracks.push(trackObj);
+                });
+                detectSoftsubs();
+            });
+
+            parser.on('subtitle', (sub, trackNumber) => {
+                const target = mkvParsedTracks.find(t => t.number === trackNumber);
+                if (target) {
+                    target.cues.push(sub);
+                    if (target.blobUrl) {
+                        URL.revokeObjectURL(target.blobUrl);
+                        target.blobUrl = null;
+                    }
+                }
+            });
+
+            if (source instanceof File || source instanceof Blob) {
+                const buffer = await source.arrayBuffer();
+                parser.write(new Uint8Array(buffer));
+            } else if (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) {
+                const res = await fetch(source, {
+                    headers: { Range: 'bytes=0-25000000' }
+                }).catch(() => null);
+                if (res && (res.status === 200 || res.status === 206)) {
+                    const buffer = await res.arrayBuffer();
+                    parser.write(new Uint8Array(buffer));
+                }
+            }
+        } catch (e) {
+            console.warn('MKV subtitle extraction notice:', e);
+        }
+    }
 
     function detectSoftsubs() {
         availableSoftsubs = [];
         const video = (artInstance && artInstance.video) || videoPlayer;
         if (!video) return;
 
-        // 1. Scan HLS subtitle tracks if using Hls.js
+        // 1. Scan MKV demuxed tracks
+        if (mkvParsedTracks && mkvParsedTracks.length > 0) {
+            mkvParsedTracks.forEach((mt, idx) => {
+                availableSoftsubs.push({
+                    type: 'mkv',
+                    index: idx,
+                    mkvTrack: mt,
+                    label: mt.name,
+                    lang: mt.language
+                });
+            });
+        }
+
+        // 2. Scan HLS subtitle tracks if using Hls.js
         if (artInstance && artInstance.hls && Array.isArray(artInstance.hls.subtitleTracks) && artInstance.hls.subtitleTracks.length > 0) {
             artInstance.hls.subtitleTracks.forEach((st, idx) => {
                 const label = st.name || st.lang || `زیرنویس HLS ${idx + 1}`;
@@ -662,7 +761,7 @@ function initSyncnemaApp() {
             currentSoftsubIndex = artInstance.hls.subtitleTrack;
         }
 
-        // 2. Scan native HTML5 video textTracks (embedded softsubs in MP4/WebM/MKV)
+        // 3. Scan native HTML5 video textTracks (embedded softsubs in MP4/WebM/MKV)
         if (video.textTracks && video.textTracks.length > 0) {
             Array.from(video.textTracks).forEach((tt, idx) => {
                 if (tt.label === 'Link Sub' || tt.label === 'Custom Sub' || tt.label === 'Artplayer') return;
@@ -692,6 +791,9 @@ function initSyncnemaApp() {
             if (artInstance && artInstance.hls) {
                 artInstance.hls.subtitleTrack = -1;
             }
+            if (artInstance && artInstance.subtitle) {
+                artInstance.subtitle.show = false;
+            }
             if (video && video.textTracks) {
                 Array.from(video.textTracks).forEach(t => {
                     if (t.label !== 'Link Sub' && t.label !== 'Custom Sub') {
@@ -704,7 +806,19 @@ function initSyncnemaApp() {
             const item = availableSoftsubs[idx];
             if (!item) return;
 
-            if (item.type === 'hls' && artInstance && artInstance.hls) {
+            if (item.type === 'mkv' && item.mkvTrack) {
+                const mt = item.mkvTrack;
+                if (mt.cues && mt.cues.length > 0) {
+                    if (!mt.blobUrl) {
+                        const vtt = buildVttFromCues(mt.cues);
+                        mt.blobUrl = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
+                        activeSubBlobUrls.push(mt.blobUrl);
+                    }
+                    addSubTrack(mt.blobUrl, mt.name);
+                } else {
+                    showToast(`⏳ در حال استخراج ترک ${mt.name}...`, false);
+                }
+            } else if (item.type === 'hls' && artInstance && artInstance.hls) {
                 artInstance.hls.subtitleTrack = item.index;
             } else if (item.type === 'native' && item.track) {
                 Array.from(video.textTracks).forEach(t => {
@@ -1199,9 +1313,29 @@ function initSyncnemaApp() {
             }
             customFsBtn.innerHTML = `<svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
             customFsBtn.title = 'تمام صفحه';
+        const artFsBtn = document.querySelector('.art-custom-fs-btn');
+        if (artFsBtn) {
+            artFsBtn.title = isFs ? 'خروج از تمام صفحه' : 'تمام صفحه';
+            artFsBtn.innerHTML = isFs 
+                ? `<svg class="art-fs-icon w-5 h-5" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`
+                : `<svg class="art-fs-icon w-5 h-5" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
         }
     };
-    ['fullscreenchange', 'webkitfullscreenchange'].forEach(evt => document.addEventListener(evt, updateFullscreenState));
+
+    function syncChatSidebarStacking() {
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        if (fsEl && !fsEl.contains(sidebar)) {
+            fsEl.appendChild(sidebar);
+        } else if (!fsEl && sidebar.parentElement !== cinemaContainer) {
+            cinemaContainer.appendChild(sidebar);
+        }
+    }
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(evt => {
+        document.addEventListener(evt, () => {
+            updateFullscreenState();
+            syncChatSidebarStacking();
+        });
+    });
 
     window.addEventListener('orientationchange', () => {
         if (window.orientation === 90 || window.orientation === -90) {
@@ -2186,6 +2320,7 @@ function initSyncnemaApp() {
                 switchPlayer(false);
                 loadVideoSource(data.url, data.isHls);
                 setPlaybackStatus('ویدیو سینک شد');
+                parseMkvSubtitles(data.url);
                 break;
             }
 
@@ -2782,6 +2917,7 @@ function initSyncnemaApp() {
 
             currentRoomState.media = { type: 'file', fileName: f.name, fileSize: f.size };
             broadcast({ type: 'room_media', media: currentRoomState.media });
+            parseMkvSubtitles(f);
         }
     };
     $('subtitle-file-input').onchange = (e) => {
@@ -2846,6 +2982,7 @@ function initSyncnemaApp() {
             currentRoomState.media = { type: 'url', url: val, isHls: true };
             broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: true });
+            parseMkvSubtitles(val);
         } else {
             setPlaybackStatus('پخش فایل');
             showToast('✅ لینک مستقیم بارگذاری شد', true);
@@ -2854,6 +2991,7 @@ function initSyncnemaApp() {
             currentRoomState.media = { type: 'url', url: val, isHls: false };
             broadcast({ type: 'room_media', media: currentRoomState.media });
             broadcast({ type: 'load_url', url: val, isHls: false });
+            parseMkvSubtitles(val);
         }
     };
 
