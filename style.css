@@ -1,10 +1,92 @@
 /* ==========================================================================
-   Syncnema 🍿 - Apple VisionOS / Frost Minimal Liquid Glass Theme
+   Syncnema 🍿 - Material 3 Expressive Design System
    ========================================================================== */
+
+:root {
+    /* M3 Dark Surfaces */
+    --md-sys-color-surface: #090C10;
+    --md-sys-color-surface-dim: #06090D;
+    --md-sys-color-surface-container-lowest: #0C1017;
+    --md-sys-color-surface-container-low: #131822;
+    --md-sys-color-surface-container: #1A212E;
+    --md-sys-color-surface-container-high: #232B3B;
+    --md-sys-color-surface-container-highest: #2E374A;
+
+    /* M3 Outlines & Dividers */
+    --md-sys-color-outline: rgba(255, 255, 255, 0.12);
+    --md-sys-color-outline-variant: rgba(255, 255, 255, 0.06);
+
+    /* M3 Expressive Accents */
+    --md-sys-color-primary: #38bdf8;
+    --md-sys-color-primary-container: #082f49;
+    --md-sys-color-on-primary: #082f49;
+    --md-sys-color-on-primary-container: #e0f2fe;
+
+    --md-sys-color-secondary: #f59e0b;
+    --md-sys-color-secondary-container: #451a03;
+    --md-sys-color-on-secondary-container: #fef3c7;
+
+    --md-sys-color-tertiary: #ef4444;
+    --md-sys-color-tertiary-container: #450a0a;
+    --md-sys-color-on-tertiary-container: #fee2e2;
+
+    --md-sys-color-on-surface: #f1f5f9;
+    --md-sys-color-on-surface-variant: #94a3b8;
+}
+
+/* M3 Expressive Surface Containers (Lightweight, No GPU-draining heavy blur) */
+.m3-surface-low {
+    background-color: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline-variant);
+}
+.m3-surface-container {
+    background-color: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.m3-surface-high {
+    background-color: var(--md-sys-color-surface-container-high);
+    border: 1px solid var(--md-sys-color-outline);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* M3 Buttons & FABs */
+.m3-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    min-height: 48px;
+    min-width: 48px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.m3-pill-btn:active {
+    transform: scale(0.94);
+}
+.m3-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.25rem;
+    min-height: 48px;
+    min-width: 48px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.m3-fab:active {
+    transform: scale(0.92);
+}
 
 body {
     font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #060911;
+    background-color: var(--md-sys-color-surface, #060911);
     color: #f8fafc;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
