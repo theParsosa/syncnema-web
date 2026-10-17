@@ -883,6 +883,7 @@ emoji-picker {
    ========================================================================== */
 @media (orientation: landscape) and (max-height: 500px) {
     #top-bar,
+    #m3-desktop-header,
     #m3-bottom-bar,
     #m3-top-chip {
         opacity: 0;
@@ -892,6 +893,8 @@ emoji-picker {
 
     body.show-controls #top-bar,
     body:hover #top-bar,
+    body.show-controls #m3-desktop-header,
+    body:hover #m3-desktop-header,
     body.show-controls #m3-bottom-bar,
     body.show-controls #m3-top-chip {
         opacity: 1;
