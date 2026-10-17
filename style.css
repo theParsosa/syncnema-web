@@ -923,6 +923,67 @@ emoji-picker {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
+/* ==========================================================================
+   Mobile Dual-Mode Ergonomics (Portrait Browsing vs Cinema Fullscreen)
+   ========================================================================== */
+@media (max-width: 767px) and (orientation: portrait) {
+    #cinema-container {
+        flex-direction: column !important;
+        padding-top: 3.5rem !important; /* Space below m3-top-chip */
+    }
+
+    #player-viewport {
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 16 / 9 !important;
+        max-height: 38vh !important;
+    }
+
+    #my-video,
+    #youtube-player-container {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #m3-mobile-dock {
+        display: flex !important;
+    }
+
+    /* In portrait browsing mode, sidebar is docked below player viewport */
+    #chat-sidebar {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        left: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+        height: auto !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    #chat-sidebar.sidebar-closed {
+        display: none !important;
+    }
+
+    /* Hide the floating bottom bar and floating ribbon in portrait mode when docked */
+    #m3-bottom-bar,
+    #m3-emoji-ribbon {
+        display: none !important;
+    }
+}
+
+
 
 
 

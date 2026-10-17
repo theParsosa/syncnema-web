@@ -509,6 +509,31 @@ window.addEventListener('load', () => {
         openProfileModal();
     });
 
+    // Mobile M3 Dock Event Handlers
+    $('m3-dock-video')?.addEventListener('click', () => {
+        $('video-modal')?.classList.remove('hidden');
+    });
+    $('m3-dock-sub')?.addEventListener('click', () => {
+        $('sub-modal')?.classList.remove('hidden');
+    });
+    $('m3-dock-spectators')?.addEventListener('click', () => {
+        toggleSidebar(true);
+        if (typeof switchChatDrawerTab === 'function') {
+            switchChatDrawerTab('spectators');
+        }
+    });
+    $('m3-dock-admin')?.addEventListener('click', () => {
+        if (!isHost) {
+            showToast('⚠️ فقط میزبان اتاق به این پنل دسترسی دارد', false);
+            return;
+        }
+        updateAdminModalUI();
+        $('admin-modal')?.classList.remove('hidden');
+    });
+    $('m3-dock-fs')?.addEventListener('click', () => {
+        customFsBtn?.click();
+    });
+
     // Auto-reveal controls on interaction in landscape mode
     let controlsTimer = null;
     function revealControlsTemporarily() {
@@ -1055,6 +1080,17 @@ window.addEventListener('load', () => {
         if (m3AdminBtn) {
             if (isHost) m3AdminBtn.classList.remove('hidden');
             else m3AdminBtn.classList.add('hidden');
+        }
+
+        const m3DockAdmin = $('m3-dock-admin');
+        if (m3DockAdmin) {
+            if (isHost) {
+                m3DockAdmin.classList.remove('hidden');
+                m3DockAdmin.classList.add('flex');
+            } else {
+                m3DockAdmin.classList.add('hidden');
+                m3DockAdmin.classList.remove('flex');
+            }
         }
 
         if (typeof updateSpectatorsList === 'function') {
