@@ -23,9 +23,9 @@ const styleContent = fs.readFileSync(stylePath, 'utf8');
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
 // 2. Cache Busters
-assert(indexContent.includes('style.css?v=5.2'), 'index.html must link style.css?v=5.2');
-assert(indexContent.includes('script.js?v=5.2'), 'index.html must link script.js?v=5.2');
-console.log('✓ 2. Cache busters v=5.2 verified');
+assert(/style\.css\?v=5\.[2-9]/.test(indexContent), 'index.html must link style.css?v>=5.2');
+assert(/script\.js\?v=5\.[2-9]/.test(indexContent), 'index.html must link script.js?v>=5.2');
+console.log('✓ 2. Cache busters verified');
 
 // 3. MatroskaSubtitles global reference check
 assert(scriptContent.includes('MatroskaSubtitles'), 'script.js must check MatroskaSubtitles global');

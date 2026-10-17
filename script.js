@@ -181,7 +181,8 @@ function initSyncnemaApp() {
                             <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                             <span id="art-unread-badge" style="position:absolute;top:4px;right:2px;background:#06b6d4;color:#fff;font-size:9px;font-weight:bold;width:14px;height:14px;border-radius:9999px;display:none;align-items:center;justify-content:center;line-height:1;">0</span>
                         </button>`,
-                        click: function () {
+                        click: function (custom, $btn, event) {
+                            if (event && event.stopPropagation) event.stopPropagation();
                             toggleSidebar(!isSidebarOpen);
                         }
                     },
@@ -747,15 +748,30 @@ function initSyncnemaApp() {
                 }
             });
 
+            function feedParser(arr) {
+                if (!arr || !arr.length) return;
+                const uint8 = (arr instanceof Uint8Array) ? arr : new Uint8Array(arr);
+                uint8._isBuffer = true;
+                parser.write(uint8);
+            }
+
             if (source instanceof File || source instanceof Blob) {
                 const buffer = await source.arrayBuffer();
-                parser.write(new Uint8Array(buffer));
+                feedParser(buffer);
             } else if (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) {
-                let res = await fetch(source, {
-                    headers: { Range: 'bytes=0-25000000' }
-                }).catch(() => null);
-                if (!res || (!res.ok && res.status !== 206)) {
-                    res = await fetch(source).catch(() => null);
+                let res = null;
+                try {
+                    res = await fetch(source, {
+                        headers: { Range: 'bytes=0-25000000' }
+                    });
+                } catch (corsErr) {
+                    try {
+                        res = await fetch(source);
+                    } catch (corsErr2) {
+                        console.warn('CORS restriction on video URL:', corsErr2);
+                        showToast('ℹ️ زیرنویس داخلی به دلیل عدم ارسال هدر CORS توسط سرور ویدیو خوانده نشد. می‌توانید فایل زیرنویس را جداگانه بارگذاری کنید.', false);
+                        return;
+                    }
                 }
                 if (res && res.body) {
                     const reader = res.body.getReader();
@@ -764,13 +780,13 @@ function initSyncnemaApp() {
                     while (bytesRead < maxBytes) {
                         const { done, value } = await reader.read();
                         if (done || !value) break;
-                        parser.write(value);
+                        feedParser(value);
                         bytesRead += value.length;
                     }
                     try { reader.cancel(); } catch (e) {}
                 } else if (res && (res.status === 200 || res.status === 206)) {
                     const buffer = await res.arrayBuffer();
-                    parser.write(new Uint8Array(buffer));
+                    feedParser(buffer);
                 }
             }
         } catch (e) {
@@ -1142,13 +1158,15 @@ function initSyncnemaApp() {
     $('m3-media-btn')?.addEventListener('click', () => {
         $('video-modal')?.classList.remove('hidden');
     });
-    $('m3-spectators-btn')?.addEventListener('click', () => {
+    $('m3-spectators-btn')?.addEventListener('click', (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         toggleSidebar(true);
         if (typeof switchChatDrawerTab === 'function') {
             switchChatDrawerTab('spectators');
         }
     });
-    $('m3-chat-fab')?.addEventListener('click', () => {
+    $('m3-chat-fab')?.addEventListener('click', (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         toggleSidebar(!isSidebarOpen);
     });
     $('m3-admin-btn')?.addEventListener('click', () => {
@@ -1176,7 +1194,8 @@ function initSyncnemaApp() {
     $('m3-dock-sub')?.addEventListener('click', () => {
         $('sub-modal')?.classList.remove('hidden');
     });
-    $('m3-dock-spectators')?.addEventListener('click', () => {
+    $('m3-dock-spectators')?.addEventListener('click', (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         toggleSidebar(true);
         if (typeof switchChatDrawerTab === 'function') {
             switchChatDrawerTab('spectators');
@@ -1244,8 +1263,14 @@ function initSyncnemaApp() {
             sidebar.classList.add('sidebar-closed');
         }
     }
-    toggleBtn.onclick = () => toggleSidebar(!isSidebarOpen);
-    closeSidebarBtn.onclick = () => toggleSidebar(false);
+    toggleBtn.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        toggleSidebar(!isSidebarOpen);
+    };
+    closeSidebarBtn.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        toggleSidebar(false);
+    };
 
     // Smart scroll listener: reveals full history when scrolled up, restores top fade after scrolling back to bottom
     chatMsgs.addEventListener('scroll', () => {
@@ -1558,11 +1583,14 @@ function initSyncnemaApp() {
     }
 
     document.onclick = (e) => {
-        if (emojiPicker && !emojiPicker.contains(e.target) && e.target !== emojiBtn && !sidebar.contains(e.target) && e.target !== toggleBtn) {
+        const isChatTrigger = e.target.closest('#toggle-chat-btn, .art-chat-control-btn, #m3-chat-fab, #m3-spectators-btn, #m3-dock-spectators, #spectators-trigger, .chat-stream-pill, #chat-stream-overlay, #custom-fs-btn, .art-custom-fs-btn, #m3-dock-fs, #m3-fs-btn, #emoji-btn');
+        if (isChatTrigger) return;
+
+        if (emojiPicker && !emojiPicker.contains(e.target) && !sidebar.contains(e.target)) {
             emojiPicker.style.display = 'none';
         }
         const isCinemaMode = document.body.classList.contains('is-fullscreen-cinema') || !!(document.fullscreenElement || document.webkitFullscreenElement);
-        if (isCinemaMode && isSidebarOpen && !sidebar.contains(e.target) && e.target !== toggleBtn && !customFsBtn?.contains(e.target)) {
+        if (isCinemaMode && isSidebarOpen && !sidebar.contains(e.target)) {
             toggleSidebar(false);
         }
     };
