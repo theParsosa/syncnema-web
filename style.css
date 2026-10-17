@@ -699,21 +699,6 @@ emoji-picker {
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-/* Landscape Mode Prompt */
-#landscape-warning { display: none; }
-@media only screen and (max-width: 768px) and (orientation: portrait) {
-    #landscape-warning { display: flex; }
-    #landscape-warning.hidden-force { display: none !important; }
-}
-@keyframes rotate-phone {
-    0%, 10% { transform: rotate(0deg); }
-    40%, 60% { transform: rotate(90deg); }
-    90%, 100% { transform: rotate(0deg); }
-}
-.phone-icon {
-    font-size: 4rem;
-    animation: rotate-phone 3s infinite ease-in-out;
-}
 
 /* ==========================================================================
    Mobile M3 Bottom Bar & Safe-Area Adjustments

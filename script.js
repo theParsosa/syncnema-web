@@ -24,38 +24,48 @@ window.addEventListener('load', () => {
     const videoPlayer = $('my-video');
     const ytContainer = $('youtube-player-container');
     let artInstance = null;
+    let isProgrammaticSync = false;
+    let pendingSeekTime = null;
 
     function getPlayerCurrentTime() {
         if (isYouTubeMode && ytPlayer?.getCurrentTime) return ytPlayer.getCurrentTime();
-        if (artInstance && artInstance.video) return artInstance.currentTime;
-        return videoPlayer.currentTime;
+        if (artInstance && artInstance.video) return artInstance.video.currentTime || 0;
+        return videoPlayer.currentTime || 0;
     }
 
     function getPlayerIsPlaying() {
         if (isYouTubeMode && ytPlayer?.getPlayerState) return ytPlayer.getPlayerState() === 1;
-        if (artInstance && artInstance.video) return artInstance.playing;
+        if (artInstance && artInstance.video) return !artInstance.video.paused;
         return !videoPlayer.paused;
     }
 
     function getPlayerPlaybackRate() {
         if (isYouTubeMode && ytPlayer?.getPlaybackRate) return ytPlayer.getPlaybackRate();
-        if (artInstance && artInstance.video) return artInstance.playbackRate;
-        return videoPlayer.playbackRate;
+        if (artInstance && artInstance.video) return artInstance.video.playbackRate || 1;
+        return videoPlayer.playbackRate || 1;
     }
 
     function getPlayerDuration() {
         if (isYouTubeMode && ytPlayer?.getDuration) return ytPlayer.getDuration();
-        if (artInstance && artInstance.video) return artInstance.duration;
-        return videoPlayer.duration;
+        if (artInstance && artInstance.video) return artInstance.video.duration || 0;
+        return videoPlayer.duration || 0;
     }
 
     function setPlayerTime(t) {
         if (isYouTubeMode && ytPlayer?.seekTo) {
             ytPlayer.seekTo(t, true);
         } else if (artInstance && artInstance.video) {
-            artInstance.currentTime = t;
+            if (artInstance.video.readyState >= 1) {
+                artInstance.video.currentTime = t;
+            } else {
+                pendingSeekTime = t;
+            }
         } else {
-            videoPlayer.currentTime = t;
+            if (videoPlayer.readyState >= 1) {
+                videoPlayer.currentTime = t;
+            } else {
+                pendingSeekTime = t;
+            }
         }
     }
 
@@ -63,7 +73,9 @@ window.addEventListener('load', () => {
         if (isYouTubeMode && ytPlayer?.playVideo) {
             ytPlayer.playVideo();
         } else if (artInstance && artInstance.video) {
-            artInstance.play().catch(() => {});
+            artInstance.play().catch(() => {
+                artInstance.video.play().catch(() => {});
+            });
         } else {
             videoPlayer.play().catch(() => {});
         }
@@ -74,6 +86,7 @@ window.addEventListener('load', () => {
             ytPlayer.pauseVideo();
         } else if (artInstance && artInstance.video) {
             artInstance.pause();
+            artInstance.video.pause();
         } else {
             videoPlayer.pause();
         }
@@ -83,7 +96,7 @@ window.addEventListener('load', () => {
         if (isYouTubeMode && ytPlayer?.setPlaybackRate) {
             ytPlayer.setPlaybackRate(rate);
         } else if (artInstance && artInstance.video) {
-            artInstance.playbackRate = rate;
+            artInstance.video.playbackRate = rate;
         } else {
             videoPlayer.playbackRate = rate;
         }
@@ -165,22 +178,34 @@ window.addEventListener('load', () => {
                 }
             });
 
-            artInstance.on('video:play', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:pause', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:seeked', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
-            artInstance.on('video:ratechange', () => { if (typeof trackInteraction === 'function') trackInteraction(); });
+            const applyPending = () => {
+                if (pendingSeekTime !== null && artInstance && artInstance.video) {
+                    const target = pendingSeekTime;
+                    pendingSeekTime = null;
+                    isProgrammaticSync = true;
+                    artInstance.video.currentTime = target;
+                    setTimeout(() => { isProgrammaticSync = false; }, 400);
+                }
+            };
+            artInstance.on('video:loadedmetadata', applyPending);
+            artInstance.on('video:canplay', applyPending);
+
+            artInstance.on('video:play', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:pause', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:seeked', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
+            artInstance.on('video:ratechange', () => { if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction(); });
 
             artInstance.on('video:waiting', () => {
                 if (!isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
                     isLocalBuffering = true;
-                    broadcast({ type: 'user_presence', time: artInstance.currentTime, isBuffering: true, isLive: isLiveMode });
+                    broadcast({ type: 'user_presence', time: getPlayerCurrentTime(), isBuffering: true, isLive: isLiveMode });
                 }
             });
 
             const handleArtBufferEnd = () => {
                 if (isLocalBuffering && ws?.readyState === WebSocket.OPEN) {
                     isLocalBuffering = false;
-                    broadcast({ type: 'user_presence', time: artInstance.currentTime, isBuffering: false, isLive: isLiveMode });
+                    broadcast({ type: 'user_presence', time: getPlayerCurrentTime(), isBuffering: false, isLive: isLiveMode });
                 }
             };
             artInstance.on('video:playing', handleArtBufferEnd);
@@ -260,8 +285,6 @@ window.addEventListener('load', () => {
     const tutorialTooltip = $('tutorial-tooltip');
     const tutorialModal = $('tutorial-modal');
     const donateLinkBtn = $('donate-link-btn');
-    const dismissLandscape = $('dismiss-landscape');
-    const landscapeWarning = $('landscape-warning');
     const videoUrlInput = $('video-url-input');
     const subOffsetDisplay = $('sub-offset-display');
 
@@ -384,11 +407,12 @@ window.addEventListener('load', () => {
 
     function saveProfile(name, avatar, color) {
         myProfile = {
-            id: myProfile?.id || randomId(),
+            id: myProfile?.id || myId,
             name: (name || 'تماشاگر').trim() || 'تماشاگر',
             avatar: avatar || '🍿',
             color: color || '#38bdf8'
         };
+        myId = myProfile.id;
         localStorage.setItem('syncnema_user_profile', JSON.stringify(myProfile));
         updateProfileUI();
         return myProfile;
@@ -510,9 +534,6 @@ window.addEventListener('load', () => {
         }
     };
 
-    dismissLandscape.onclick = () => {
-        landscapeWarning.classList.add('hidden-force');
-    };
 
     tutorialBtn.onclick = () => {
         tutorialModal.classList.remove('hidden');
@@ -1225,20 +1246,25 @@ window.addEventListener('load', () => {
         const drift = currentLocalTime - hostLiveTime;
 
         if (force || isLiveMode) {
+            isProgrammaticSync = true;
             if (force || Math.abs(drift) > 2.0) {
-                ignoreSyncUntil = Date.now() + 1500;
+                ignoreSyncUntil = Date.now() + 2500;
                 setPlayerTime(Math.max(0, hostLiveTime));
             }
 
             if (clock.playing && !isLocalPlaying) {
-                ignoreSyncUntil = Date.now() + 1500;
+                ignoreSyncUntil = Date.now() + 2500;
                 playPlayer();
                 setPlaybackStatus('پخش لایو');
             } else if (!clock.playing && isLocalPlaying) {
-                ignoreSyncUntil = Date.now() + 1500;
+                ignoreSyncUntil = Date.now() + 2500;
                 pausePlayer();
                 setPlaybackStatus('توقف لایو');
             }
+
+            setTimeout(() => {
+                isProgrammaticSync = false;
+            }, 600);
 
             updateCatchUpUI(false, 0);
         } else {
@@ -2420,7 +2446,7 @@ window.addEventListener('load', () => {
     }, 200);
 
     const trackInteraction = () => {
-        if (Date.now() < ignoreSyncUntil) return;
+        if (isProgrammaticSync || Date.now() < ignoreSyncUntil) return;
         lastInteractionTime = Date.now();
         if (canControlPlayback()) {
             broadcastLiveClock();
@@ -2436,8 +2462,27 @@ window.addEventListener('load', () => {
         }
     };
 
+    const applyPendingNative = () => {
+        if (pendingSeekTime !== null && videoPlayer) {
+            const target = pendingSeekTime;
+            pendingSeekTime = null;
+            isProgrammaticSync = true;
+            videoPlayer.currentTime = target;
+            setTimeout(() => { isProgrammaticSync = false; }, 400);
+        }
+    };
+    videoPlayer.addEventListener('loadedmetadata', applyPendingNative);
+    videoPlayer.addEventListener('canplay', applyPendingNative);
+
+    // Auto-initialize Artplayer container on load so player UI is ready
+    if (typeof Artplayer !== 'undefined') {
+        initArtPlayer('');
+    }
+
     // Connect to signaling server once all listeners & handlers are ready
     connect();
 
-    ['play', 'pause', 'seeked', 'ratechange'].forEach(evt => videoPlayer.addEventListener(evt, trackInteraction));
+    ['play', 'pause', 'seeked', 'ratechange'].forEach(evt => videoPlayer.addEventListener(evt, () => {
+        if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction();
+    }));
 });
