@@ -117,11 +117,48 @@
         }).observe(el, { childList: true, characterData: true, subtree: true });
     }
 
+
+    // Chat: scroll-to-latest button and keyboard-safe input (visualViewport)
+    function chatEnhancements() {
+        var list = document.getElementById('chat-messages');
+        var pane = document.getElementById('chat-pane');
+        var input = document.getElementById('chat-input');
+        if (!list || !pane) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'chat-scroll-latest';
+        btn.className = 'ux-scroll-latest';
+        btn.setAttribute('aria-label', 'رفتن به آخرین پیام');
+        btn.hidden = true;
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg><span>پیام جدید</span>';
+        pane.appendChild(btn);
+        function nearBottom() { return list.scrollHeight - list.scrollTop - list.clientHeight < 80; }
+        function update() { btn.hidden = nearBottom(); }
+        list.addEventListener('scroll', update, { passive: true });
+        new MutationObserver(update).observe(list, { childList: true });
+        btn.addEventListener('click', function () {
+            list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+        });
+        if (window.visualViewport && input) {
+            var vv = window.visualViewport;
+            var onResize = function () {
+                document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+                if (document.activeElement === input) {
+                    list.scrollTop = list.scrollHeight;
+                    input.scrollIntoView({ block: 'nearest' });
+                }
+            };
+            vv.addEventListener('resize', onResize);
+            input.addEventListener('focus', function () { setTimeout(onResize, 250); });
+        }
+    }
+
     function init() {
         MODAL_IDS.forEach(function (id) { var m = document.getElementById(id); if (m) setupModal(m); });
         labelButtons();
         new MutationObserver(function () { labelButtons(); }).observe(document.body, { childList: true, subtree: true });
         connectionToasts();
+        chatEnhancements();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

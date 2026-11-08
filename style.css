@@ -1210,3 +1210,29 @@ button:focus:not(:focus-visible) { outline: none; }
         padding-inline-start: 400px;
     }
 }
+
+/* Chat: scroll-to-latest pill, comfortable touch targets, no iOS focus zoom */
+.ux-scroll-latest {
+    position: absolute;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    bottom: 76px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(103, 232, 249, 0.4);
+    background: var(--md-sys-color-surface-container-high, #1e293b);
+    color: var(--md-sys-color-on-surface, #f1f5f9);
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.ux-scroll-latest[hidden] { display: none; }
+#chat-input { font-size: 16px; min-height: 44px; }
+#emoji-btn, #chat-send { min-width: 44px; min-height: 44px; }
+#tab-btn-chat, #tab-btn-spectators { min-height: 40px; }
+.m3-share-btn, #m3-share-btn, #m3-profile-trigger { min-width: 44px; min-height: 44px; }
