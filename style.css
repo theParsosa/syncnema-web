@@ -191,12 +191,12 @@ body {
     background: rgba(255, 255, 255, 0.07) !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     color: #ffffff !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     transition: all 0.2s ease !important;
 }
 .glass-input::placeholder, #partner-id-input::placeholder {
-    color: rgba(255, 255, 255, 0.45) !important;
+    color: rgba(255, 255, 255, 0.62) !important;
 }
 .glass-input:focus, #partner-id-input:focus {
     background: rgba(255, 255, 255, 0.14) !important;
@@ -698,8 +698,8 @@ video::cue {
     gap: 0.45rem;
     padding: 0.25rem 0.6rem 0.25rem 0.35rem;
     background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 9999px;
     box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.65), 0 0 15px rgba(255, 255, 255, 0.05);
@@ -1157,3 +1157,91 @@ html, body {
 
 
 
+
+/* Empty state: hide player loader/progress while no media is selected */
+#player-viewport:has(#empty-state:not(.hidden)) .art-loading,
+#player-viewport:has(#empty-state:not(.hidden)) .art-bottom .art-control-progress,
+#player-viewport:has(#empty-state:not(.hidden)) .art-layer-lock {
+    display: none !important;
+}
+
+/* Accessibility: visible keyboard focus */
+:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary, #67e8f9);
+    outline-offset: 2px;
+}
+button:focus:not(:focus-visible) { outline: none; }
+
+/* Connection toast */
+.ux-toast {
+    position: fixed;
+    inset-inline: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    margin-inline: auto;
+    width: fit-content;
+    max-width: calc(100vw - 32px);
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--md-sys-color-surface-container-high, #1e293b);
+    color: var(--md-sys-color-on-surface, #f1f5f9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.8125rem;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ux-toast.show { opacity: 1; transform: none; }
+
+/* Motion: respect user preference */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Keep the empty state clear of the open chat panel on desktop */
+@media (min-width: 768px) {
+    body:has(#chat-sidebar:not(.sidebar-closed)) #empty-state {
+        padding-inline-start: 400px;
+    }
+}
+
+/* Chat: scroll-to-latest pill, comfortable touch targets, no iOS focus zoom */
+.ux-scroll-latest {
+    position: absolute;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    bottom: 76px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(103, 232, 249, 0.4);
+    background: var(--md-sys-color-surface-container-high, #1e293b);
+    color: var(--md-sys-color-on-surface, #f1f5f9);
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.ux-scroll-latest[hidden] { display: none; }
+#chat-input { font-size: 16px; min-height: 44px; }
+#emoji-btn, #chat-send { min-width: 44px; min-height: 44px; }
+#tab-btn-chat, #tab-btn-spectators { min-height: 40px; }
+.m3-share-btn, #m3-share-btn, #m3-profile-trigger { min-width: 44px; min-height: 44px; }
+
+/* Player controls: 48px touch targets */
+#player-viewport .art-video-player .art-controls .art-control {
+    min-width: 48px;
+    min-height: 48px;
+}
+#player-viewport .art-video-player .art-controls .art-control-time { min-width: 0; }
+#player-viewport .art-video-player .art-controls .art-control-progress { min-height: 0; min-width: 0; }
+#player-viewport .art-video-player .art-controls .art-control-time { padding-inline: 4px; }

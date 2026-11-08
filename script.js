@@ -24,8 +24,23 @@ function initSyncnemaApp() {
     const videoPlayer = $('my-video');
     const ytContainer = $('youtube-player-container');
     let artInstance = null;
-    let isProgrammaticSync = false;
     let pendingSeekTime = null;
+
+    // Programmatic-change tokens: armed right before sync code changes the player, consumed by the
+    // matching player event, so handlers can tell "my own sync apply" from a real user action.
+    // The expiry is only a backstop for events that never arrive (e.g. a seek that is cancelled).
+    const PROGRAMMATIC_BACKSTOP_MS = 2500;
+    const programmaticTokens = { play: [], pause: [], seek: [], rate: [] };
+    function markProgrammatic(kind) {
+        programmaticTokens[kind].push(Date.now() + PROGRAMMATIC_BACKSTOP_MS);
+    }
+    // True (and consumes one token) if `kind` event was caused by our own sync apply.
+    function isProgrammaticSync(kind) {
+        const q = programmaticTokens[kind];
+        const now = Date.now();
+        while (q.length && q[0] < now) q.shift();
+        return q.shift() !== undefined;
+    }
 
     function getPlayerCurrentTime() {
         if (isYouTubeMode && ytPlayer?.getCurrentTime) return ytPlayer.getCurrentTime();
@@ -51,22 +66,45 @@ function initSyncnemaApp() {
         return videoPlayer.duration || 0;
     }
 
-    function setPlayerTime(t) {
+    function setPlayerTime(t, programmatic = false) {
         if (isYouTubeMode && ytPlayer?.seekTo) {
+            if (programmatic) markYtSeekProgrammatic();
             ytPlayer.seekTo(t, true);
         } else if (artInstance && artInstance.video) {
             if (artInstance.video.readyState >= 1) {
+                if (programmatic) markProgrammatic('seek');
                 artInstance.video.currentTime = t;
             } else {
                 pendingSeekTime = t;
             }
         } else {
             if (videoPlayer.readyState >= 1) {
+                if (programmatic) markProgrammatic('seek');
                 videoPlayer.currentTime = t;
             } else {
                 pendingSeekTime = t;
             }
         }
+    }
+
+    // YouTube reports a seek only as state changes (buffering, then playing/paused again).
+    function markYtSeekProgrammatic() {
+        markProgrammatic(ytPlayer?.getPlayerState?.() === 1 ? 'play' : 'pause');
+    }
+
+    // Sync-driven player changes: arm a token only when the change will really emit an event.
+    function syncPlay() {
+        if (!getPlayerIsPlaying()) markProgrammatic('play');
+        playPlayer();
+    }
+    function syncPause() {
+        if (getPlayerIsPlaying()) markProgrammatic('pause');
+        pausePlayer();
+    }
+    function syncRate(rate) {
+        if (Math.abs(getPlayerPlaybackRate() - rate) < 1e-3) return;
+        markProgrammatic('rate');
+        setPlayerPlaybackRate(rate);
     }
 
     function playPlayer() {
@@ -142,7 +180,7 @@ function initSyncnemaApp() {
                 container: '#artplayer-container',
                 url: url || '',
                 theme: '#38bdf8',
-                volume: 0.8,
+                volume: (() => { try { const v = parseFloat(localStorage.getItem('syncnema_pref_volume')); return isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; } catch (e) { return 0.8; } })(),
                 isLive: false,
                 muted: false,
                 autoplay: false,
@@ -245,6 +283,35 @@ function initSyncnemaApp() {
                 });
             } catch (err) {}
 
+            // Remember volume (per device)
+            artInstance.on('video:volumechange', () => {
+                try { if (!artInstance.muted) localStorage.setItem('syncnema_pref_volume', String(artInstance.volume)); } catch (e) { /* storage unavailable */ }
+            });
+
+            // Double-tap left/right side of the video to seek -/+10s (touch only)
+            (() => {
+                const surface = artInstance.template && artInstance.template.$player;
+                if (!surface) return;
+                let lastTap = 0, lastSide = 0;
+                surface.addEventListener('pointerup', (e) => {
+                    if (e.pointerType !== 'touch') return;
+                    if (e.target.closest('.art-bottom, .art-controls, .art-settings, .art-layer-lock, button')) return;
+                    const rect = surface.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width;
+                    const side = x < 0.35 ? -1 : (x > 0.65 ? 1 : 0);
+                    const now = Date.now();
+                    if (side && side === lastSide && now - lastTap < 320) {
+                        const dur = artInstance.duration || 0;
+                        const t = Math.min(dur || Infinity, Math.max(0, artInstance.currentTime + side * 10));
+                        artInstance.currentTime = t;
+                        showToast(side > 0 ? '۱۰ ثانیه جلو' : '۱۰ ثانیه عقب', true);
+                        lastTap = 0; lastSide = 0;
+                        return;
+                    }
+                    lastTap = now; lastSide = side;
+                });
+            })();
+
             artInstance.on('fullscreen', (state) => {
                 if (state) {
                     if (screen.orientation && screen.orientation.lock) {
@@ -272,9 +339,8 @@ function initSyncnemaApp() {
                 if (pendingSeekTime !== null && artInstance && artInstance.video) {
                     const target = pendingSeekTime;
                     pendingSeekTime = null;
-                    isProgrammaticSync = true;
+                    markProgrammatic('seek');
                     artInstance.video.currentTime = target;
-                    setTimeout(() => { isProgrammaticSync = false; }, 400);
                 }
             };
             artInstance.on('video:loadedmetadata', () => {
@@ -290,22 +356,22 @@ function initSyncnemaApp() {
             }
 
             artInstance.on('video:play', () => {
-                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                if (!isProgrammaticSync('play') && canControlPlayback()) {
                     broadcastLiveClock();
                 }
             });
             artInstance.on('video:pause', () => {
-                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                if (!isProgrammaticSync('pause') && canControlPlayback()) {
                     broadcastLiveClock();
                 }
             });
             artInstance.on('video:ratechange', () => {
-                if (canControlPlayback() && !isProgrammaticSync && Date.now() >= ignoreSyncUntil) {
+                if (!isProgrammaticSync('rate') && canControlPlayback()) {
                     broadcastLiveClock();
                 }
             });
             artInstance.on('seek', (currentTime) => {
-                if (isProgrammaticSync || Date.now() < ignoreSyncUntil) return;
+                if (isProgrammaticSync('seek')) return;
                 if (canControlPlayback()) {
                     broadcastLiveClock();
                 } else if (latestHostClock) {
@@ -340,7 +406,12 @@ function initSyncnemaApp() {
         }
     }
 
+    function hideEmptyState() { $('empty-state')?.classList.add('hidden'); }
+    $('empty-pick-btn')?.addEventListener('click', () => ($('video-modal-trigger') || $('m3-dock-video'))?.click());
+    $('empty-invite-btn')?.addEventListener('click', () => $('share-room-btn')?.click());
+
     function loadVideoSource(url, isHls = false) {
+        hideEmptyState();
         destroyHls();
         cleanupVideoBlob();
 
@@ -1041,9 +1112,16 @@ function initSyncnemaApp() {
     // Share Room Invite Link
     shareRoomBtn?.addEventListener('click', () => {
         const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoomId)}`;
+        if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+            navigator.share({ title: 'Syncnema', text: 'به اتاق تماشای من بپیوند', url: shareUrl }).catch((err) => {
+                if (err && err.name === 'AbortError') return;
+                navigator.clipboard?.writeText(shareUrl).then(() => showToast('لینک دعوت به اتاق کپی شد!', true)).catch(() => prompt('لینک اتاق را کپی کنید:', shareUrl));
+            });
+            return;
+        }
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(shareUrl).then(() => {
-                showToast('📋 لینک دعوت به اتاق کپی شد!', true);
+                showToast('لینک دعوت به اتاق کپی شد!', true);
             }).catch(() => {
                 prompt('لینک اتاق را کپی کنید:', shareUrl);
             });
@@ -1144,8 +1222,10 @@ function initSyncnemaApp() {
             time: getPlayerCurrentTime(),
             playing: getPlayerIsPlaying(),
             rate: getPlayerPlaybackRate(),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            seq: nextClockSeq()
         };
+        lastClockSentAt = Date.now();
         currentRoomState.liveClock = clock;
         broadcast({ type: 'force_sync', clock });
         showToast('🔴 هماهنگ‌سازی اجباری برای همه ارسال شد', true);
@@ -1251,6 +1331,7 @@ function initSyncnemaApp() {
 
     function toggleSidebar(open) {
         isSidebarOpen = open;
+        try { localStorage.setItem('syncnema_pref_chat_open', open ? '1' : '0'); } catch (e) { /* storage unavailable */ }
         if (typeof syncChatSidebarStacking === 'function') {
             syncChatSidebarStacking();
         }
@@ -1277,6 +1358,10 @@ function initSyncnemaApp() {
         if (e && e.stopPropagation) e.stopPropagation();
         toggleSidebar(false);
     };
+    // Restore chat open state on desktop only (on phones it would cover the player)
+    try {
+        if (localStorage.getItem('syncnema_pref_chat_open') === '1' && window.matchMedia('(min-width: 768px)').matches) toggleSidebar(true);
+    } catch (e) { /* storage unavailable */ }
 
     // Smart scroll listener: reveals full history when scrolled up, restores top fade after scrolling back to bottom
     chatMsgs.addEventListener('scroll', () => {
@@ -1683,6 +1768,7 @@ function initSyncnemaApp() {
         videoPlayer.style.display = 'none';
         ytContainer.style.display = youtube ? 'block' : 'none';
         if (youtube) {
+            hideEmptyState();
             destroyHls();
             pausePlayer();
         } else if (ytPlayer?.pauseVideo) {
@@ -1713,6 +1799,9 @@ function initSyncnemaApp() {
             events: {
                 'onReady': () => { setPlaybackStatus('یوتیوب آماده'); sendSync(); },
                 'onStateChange': (e) => {
+                    // YouTube has no per-action events: a state change is a user play/pause unless a token says otherwise
+                    const ownApply = (e.data === 1 || e.data === 2) && isProgrammaticSync(e.data === 1 ? 'play' : 'pause');
+                    if (!ownApply && (e.data === 1 || e.data === 2) && canControlPlayback()) broadcastLiveClock();
                     if (!isSyncing && Date.now() > ignoreSyncUntil) {
                         if (e.data === 1 || e.data === 2) {
                             sendSync();
@@ -1726,6 +1815,7 @@ function initSyncnemaApp() {
                     }
                 },
                 'onPlaybackRateChange': () => {
+                    if (!isProgrammaticSync('rate') && canControlPlayback()) broadcastLiveClock();
                     if (!isSyncing && Date.now() > ignoreSyncUntil) sendSync();
                 },
                 'onError': (e) => {
@@ -1755,20 +1845,74 @@ function initSyncnemaApp() {
 
     let latestHostClock = null;
 
+    // ---- Clock sync (guest <-> host), see sync-core.js ----
+    // clockOffset = host clock - my clock. The host (and anyone with no samples) uses 0, i.e. the old behaviour.
+    const SyncCore = window.SyncCore;
+    const CLOCK_PING_BURST = 5;
+    const CLOCK_PING_INTERVAL_MS = 15000;
+    const HOST_STALE_MS = 12000;
+    const clockEstimator = SyncCore.createClockEstimator();
+    const clockGate = SyncCore.createClockGate();
+    const pendingClockPings = new Map();
+    let clockBurstPending = true;
+    let clockSeq = Date.now(); // seeded so a reloaded host never restarts below what guests already saw
+    let lastClockSentAt = 0;
+    let lastClockRecvAt = 0;
+    let driftState = SyncCore.newDriftState();
+
+    function hostNow() {
+        return Date.now() + (isHost ? 0 : clockEstimator.getOffset());
+    }
+
+    function nextClockSeq() {
+        return ++clockSeq;
+    }
+
+    function resetClockSync() {
+        clockEstimator.reset();
+        clockGate.reset();
+        pendingClockPings.clear();
+        driftState = SyncCore.newDriftState();
+        latestHostClock = null;
+        lastClockRecvAt = Date.now();
+        clockBurstPending = true;
+    }
+
+    function sendClockPing() {
+        const hostId = currentRoomState.hostId;
+        if (isHost || !hostId || hostId === myId || !ws || ws.readyState !== WebSocket.OPEN) return;
+        const t0 = Date.now();
+        const id = randomId();
+        pendingClockPings.forEach((t, k) => { if (t0 - t > 5000) pendingClockPings.delete(k); });
+        pendingClockPings.set(id, t0);
+        send(hostId, { type: 'clock_ping', id, t0 });
+    }
+
+    function startClockBurst() {
+        clockBurstPending = false;
+        for (let i = 0; i < CLOCK_PING_BURST; i++) setTimeout(sendClockPing, i * 200);
+    }
+
+    setInterval(() => {
+        if (isHost || !currentRoomState.hostId) return;
+        if (clockBurstPending) startClockBurst();
+        else sendClockPing();
+    }, CLOCK_PING_INTERVAL_MS);
+
     function calculateDesync(localTime, hostTimeOrClock, hostTimestamp, isHostPlaying = true, rate = 1) {
         let hostTime, timestamp, playing, r;
         if (typeof hostTimeOrClock === 'object' && hostTimeOrClock !== null) {
             hostTime = hostTimeOrClock.time || 0;
-            timestamp = hostTimeOrClock.timestamp || Date.now();
+            timestamp = hostTimeOrClock.timestamp || hostNow();
             playing = hostTimeOrClock.playing !== undefined ? !!hostTimeOrClock.playing : true;
             r = hostTimeOrClock.rate || 1;
         } else {
             hostTime = hostTimeOrClock || 0;
-            timestamp = hostTimestamp || Date.now();
+            timestamp = hostTimestamp || hostNow();
             playing = (typeof isHostPlaying === 'boolean') ? isHostPlaying : true;
             r = rate || 1;
         }
-        const elapsed = playing ? Math.max(0, (Date.now() - timestamp) / 1000) * r : 0;
+        const elapsed = playing ? Math.max(0, (hostNow() - timestamp) / 1000) * r : 0;
         const currentHostLive = hostTime + elapsed;
         const diff = localTime - currentHostLive;
         const isDetached = Math.abs(diff) > 2.5;
@@ -1799,76 +1943,47 @@ function initSyncnemaApp() {
         if (!clock || isHost) return;
         latestHostClock = clock;
 
-        const now = Date.now();
-        const elapsed = clock.playing ? Math.max(0, (now - (clock.timestamp || now)) / 1000) * (clock.rate || 1) : 0;
-        const hostLiveTime = clock.time + elapsed;
-
         const currentLocalTime = getPlayerCurrentTime();
-        const isLocalPlaying = getPlayerIsPlaying();
-        const drift = currentLocalTime - hostLiveTime;
+        const now = hostNow();
+        const elapsed = clock.playing ? Math.max(0, (now - (clock.timestamp || now)) / 1000) * (clock.rate || 1) : 0;
+        const drift = currentLocalTime - (clock.time + elapsed);
 
         if (force || isLiveMode) {
-            isProgrammaticSync = true;
-            ignoreSyncUntil = Date.now() + 3000;
+            const plan = SyncCore.planClockApply({
+                clock, hostNow: now, force, now: Date.now(), state: driftState,
+                local: {
+                    time: currentLocalTime,
+                    playing: getPlayerIsPlaying(),
+                    rate: getPlayerPlaybackRate(),
+                    buffering: isLocalBuffering,
+                    isYouTube: isYouTubeMode
+                }
+            });
+            driftState = plan.state;
 
-            // 1. Host is paused -> align position to host paused frame
-            if (!clock.playing) {
-                if (force || Math.abs(currentLocalTime - clock.time) > 0.5) {
-                    setPlayerTime(Math.max(0, clock.time));
-                }
-                setPlayerPlaybackRate(clock.rate || 1.0);
-                if (isLocalPlaying) {
-                    pausePlayer();
-                    setPlaybackStatus('توقف لایو');
-                }
-            }
-            // 2. Host unpaused/playing, while guest was paused -> smoothly start without jumping forward!
-            else if (clock.playing && !isLocalPlaying) {
-                const pauseDrift = Math.abs(currentLocalTime - clock.time);
-                // If guest was paused close to the scene (within 8 seconds), don't teleport forward
-                if (!force && pauseDrift < 8.0) {
-                    if (pauseDrift > 0.5) {
-                        setPlayerTime(Math.max(0, clock.time));
-                    }
-                    // Start playing at 1.08x to seamlessly catch up to live edge with zero missed scenes
-                    setPlayerPlaybackRate(Math.min(2.0, (clock.rate || 1.0) * 1.08));
-                } else {
-                    setPlayerTime(Math.max(0, hostLiveTime));
-                    setPlayerPlaybackRate(clock.rate || 1.0);
-                }
-                playPlayer();
-                setPlaybackStatus('پخش لایو');
-            }
-            // 3. Both are playing
-            else if (clock.playing && isLocalPlaying) {
-                // If local is still buffering, do NOT interrupt downloading with hard seeks
-                if (!isLocalBuffering) {
-                    if (force || Math.abs(drift) > 5.0) {
-                        setPlayerTime(Math.max(0, hostLiveTime));
-                        setPlayerPlaybackRate(clock.rate || 1.0);
-                    } else if (Math.abs(drift) > 0.7) {
-                        const baseRate = clock.rate || 1.0;
-                        if (drift < 0) {
-                            setPlayerPlaybackRate(Math.min(2.0, baseRate * 1.07));
-                        } else {
-                            setPlayerPlaybackRate(Math.max(0.5, baseRate * 0.93));
-                        }
-                    } else {
-                        if (getPlayerPlaybackRate() !== (clock.rate || 1.0)) {
-                            setPlayerPlaybackRate(clock.rate || 1.0);
-                        }
-                    }
-                }
-            }
-
-            setTimeout(() => {
-                isProgrammaticSync = false;
-            }, 800);
+            if (plan.seek !== null) setPlayerTime(plan.seek, true);
+            if (plan.rate !== null) syncRate(plan.rate);
+            if (plan.pause) syncPause();
+            if (plan.play) syncPlay();
+            if (plan.status === 'paused') setPlaybackStatus('توقف لایو');
+            else if (plan.status === 'playing') setPlaybackStatus('پخش لایو');
 
             updateCatchUpUI(false, 0);
         } else {
             updateCatchUpUI(true, Math.round(drift));
         }
+    }
+
+    // Single entry point for a clock received from the network (sync_tick / force_sync / room_state).
+    // Returns false when it was dropped as stale or out of order.
+    function receiveHostClock(clock, from, force = false) {
+        if (!clock || isHost) return false;
+        lastClockRecvAt = Date.now();
+        if (!clockGate.accept(from, clock.seq)) return false;
+        if (force) isLiveMode = true;
+        if (force || isLiveMode) applyLiveClock(clock, force);
+        else latestHostClock = clock;
+        return true;
     }
 
     function broadcastLiveClock() {
@@ -1877,8 +1992,10 @@ function initSyncnemaApp() {
             time: getPlayerCurrentTime(),
             playing: getPlayerIsPlaying(),
             rate: getPlayerPlaybackRate(),
-            timestamp: Date.now()
+            timestamp: hostNow(),
+            seq: nextClockSeq()
         };
+        lastClockSentAt = Date.now();
         currentRoomState.liveClock = clock;
         broadcast({ type: 'sync_tick', clock });
     }
@@ -1917,7 +2034,8 @@ function initSyncnemaApp() {
                 time: getPlayerCurrentTime(),
                 playing: getPlayerIsPlaying(),
                 rate: getPlayerPlaybackRate(),
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                seq: nextClockSeq()
             },
             users: Array.from(roomMembers.values())
         };
@@ -2114,6 +2232,9 @@ function initSyncnemaApp() {
                     connTimeoutTimer = null;
                 }
                 reconnectAttempts = 0;
+                clockEstimator.reset();
+                pendingClockPings.clear();
+                clockBurstPending = true;
                 socket.send(JSON.stringify({ type: 'register', id: myId }));
                 setStatus('متصل به اتاق', 'ok');
                 startWsHeartbeat();
@@ -2198,6 +2319,22 @@ function initSyncnemaApp() {
                 break;
             }
 
+            case 'clock_ping': {
+                if (isHost && from && from !== myId) {
+                    send(from, { type: 'clock_pong', id: data.id, t0: data.t0, hostNow: Date.now() });
+                }
+                break;
+            }
+
+            case 'clock_pong': {
+                // only the current host's answer to a ping we really sent
+                if (isHost || !from || from !== currentRoomState.hostId || !pendingClockPings.has(data.id)) break;
+                const t0 = pendingClockPings.get(data.id);
+                pendingClockPings.delete(data.id);
+                clockEstimator.addSample(t0, data.hostNow, Date.now());
+                break;
+            }
+
             case 'request_sync': {
                 if (isHost && from && from !== myId) {
                     send(from, { type: 'room_state', state: getAuthoritativeState() });
@@ -2246,8 +2383,10 @@ function initSyncnemaApp() {
                 currentRoomState.isLocked = !!state.isLocked;
 
                 if (state.hostId) {
+                    if (currentRoomState.hostId && currentRoomState.hostId !== state.hostId) resetClockSync();
                     currentRoomState.hostId = state.hostId;
                     isHost = (state.hostId === myId);
+                    if (!isHost && clockBurstPending) startClockBurst();
                 }
 
                 if (Array.isArray(state.users)) {
@@ -2275,7 +2414,7 @@ function initSyncnemaApp() {
                 }
 
                 if (state.liveClock && !isHost && isLiveMode) {
-                    if (typeof applyLiveClock === 'function') applyLiveClock(state.liveClock);
+                    receiveHostClock(state.liveClock, from);
                 }
 
                 updateRoomUI();
@@ -2336,6 +2475,8 @@ function initSyncnemaApp() {
                         showToast('میزبانی به کاربر دیگر واگذار شد', false);
                     }
                     currentRoomState.hostId = data.newHostId;
+                    resetClockSync();
+                    if (!isHost) startClockBurst();
                     updateRoomUI();
                     return;
                 }
@@ -2371,16 +2512,12 @@ function initSyncnemaApp() {
             }
 
             case 'sync_tick': {
-                if (!isHost && isLiveMode && data.clock) {
-                    if (typeof applyLiveClock === 'function') applyLiveClock(data.clock);
-                }
+                if (!isHost && data.clock) receiveHostClock(data.clock, from);
                 break;
             }
 
             case 'force_sync': {
-                if (data.clock) {
-                    isLiveMode = true;
-                    if (typeof applyLiveClock === 'function') applyLiveClock(data.clock, true);
+                if (data.clock && receiveHostClock(data.clock, from, true)) {
                     showToast('🔴 هماهنگ‌سازی اجباری با زمان میزبان انجام شد', true);
                 }
                 break;
@@ -3213,19 +3350,20 @@ function initSyncnemaApp() {
         const rate = getPlayerPlaybackRate();
 
         if (isHost) {
-            const clock = {
-                time: curTime,
-                playing: isPlaying,
-                rate: rate,
-                timestamp: Date.now()
-            };
-            currentRoomState.liveClock = clock;
-            broadcast({ type: 'sync_tick', clock });
+            // Events send an immediate tick; this is only the heartbeat (5s playing, 10s paused)
+            if (Date.now() - lastClockSentAt >= (isPlaying ? 4900 : 9900)) broadcastLiveClock();
         } else if (latestHostClock) {
             const res = calculateDesync(curTime, latestHostClock);
+            const hostStale = latestHostClock.playing && Date.now() - lastClockRecvAt > HOST_STALE_MS;
             if (!isLiveMode) {
                 updateCatchUpUI(true, res.diff);
-            } else if (res.isDetached) {
+            } else if (hostStale) {
+                // No clock for a while: stop extrapolating the host, drop any rate nudge and just wait
+                if (isPlaying) syncRate(latestHostClock.rate || 1);
+                driftState = SyncCore.newDriftState();
+                setPlaybackStatus('در انتظار میزبان...');
+            } else if (res.isDetached || (latestHostClock.playing && isPlaying)) {
+                // while both are playing the drift controller re-evaluates every second
                 applyLiveClock(latestHostClock, false);
             } else {
                 updateCatchUpUI(false, 0);
@@ -3261,8 +3399,8 @@ function initSyncnemaApp() {
         pendingReactions = pendingReactions.filter(r => !r.played || Math.abs(currentTime - r.time) < 10);
     }, 200);
 
-    const trackInteraction = () => {
-        if (isProgrammaticSync || Date.now() < ignoreSyncUntil) return;
+    const trackInteraction = (kind) => {
+        if (isProgrammaticSync(kind)) return;
         lastInteractionTime = Date.now();
         if (canControlPlayback()) {
             broadcastLiveClock();
@@ -3273,9 +3411,8 @@ function initSyncnemaApp() {
         if (pendingSeekTime !== null && videoPlayer) {
             const target = pendingSeekTime;
             pendingSeekTime = null;
-            isProgrammaticSync = true;
+            markProgrammatic('seek');
             videoPlayer.currentTime = target;
-            setTimeout(() => { isProgrammaticSync = false; }, 400);
         }
     };
     videoPlayer.addEventListener('loadedmetadata', applyPendingNative);
@@ -3301,6 +3438,7 @@ function initSyncnemaApp() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 connect();
             } else {
+                if (isHost) broadcastLiveClock(); // tell guests the real position right after a background stretch
                 broadcast({ type: 'request_sync' });
             }
         }
@@ -3320,8 +3458,8 @@ function initSyncnemaApp() {
     // Connect to signaling server once all listeners & handlers are ready
     connect();
 
-    ['play', 'pause', 'seeked', 'ratechange'].forEach(evt => videoPlayer.addEventListener(evt, () => {
-        if (!isProgrammaticSync && typeof trackInteraction === 'function') trackInteraction();
+    [['play', 'play'], ['pause', 'pause'], ['seeked', 'seek'], ['ratechange', 'rate']].forEach(([evt, kind]) => videoPlayer.addEventListener(evt, () => {
+        if (typeof trackInteraction === 'function') trackInteraction(kind);
     }));
 }
 

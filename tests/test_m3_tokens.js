@@ -2,7 +2,7 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const css = fs.readFileSync('/Users/parsosa/Downloads/syncnema/style.css', 'utf8');
+const css = fs.readFileSync(require('path').join(__dirname, '..', 'style.css'), 'utf8');
 
 // Check that M3 tokens are defined
 assert(css.includes('--md-sys-color-surface:'), 'Missing --md-sys-color-surface in style.css');

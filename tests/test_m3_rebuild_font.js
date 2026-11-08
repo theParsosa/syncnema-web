@@ -2,8 +2,8 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const html = fs.readFileSync('/Users/parsosa/Downloads/syncnema/index.html', 'utf8');
-const css = fs.readFileSync('/Users/parsosa/Downloads/syncnema/style.css', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const css = fs.readFileSync(require('path').join(__dirname, '..', 'style.css'), 'utf8');
 
 assert(html.includes('family=Estedad'), 'index.html missing Google Fonts Estedad link');
 assert(css.includes("font-family: 'Estedad'"), 'style.css missing Estedad font-family definition');

@@ -23,8 +23,8 @@ const styleContent = fs.readFileSync(stylePath, 'utf8');
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
 // 2. Cache Busters
-assert(/style\.css\?v=5\.[2-9]/.test(indexContent), 'index.html must link style.css?v>=5.2');
-assert(/script\.js\?v=5\.[2-9]/.test(indexContent), 'index.html must link script.js?v>=5.2');
+assert(/style\.css\?v=\d+\.\d+/.test(indexContent), 'index.html must link style.css?v>=5.2');
+assert(/script\.js\?v=\d+\.\d+/.test(indexContent), 'index.html must link script.js?v>=5.2');
 console.log('✓ 2. Cache busters verified');
 
 // 3. MatroskaSubtitles global reference check

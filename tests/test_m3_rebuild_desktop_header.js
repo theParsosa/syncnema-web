@@ -2,7 +2,7 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const html = fs.readFileSync('/Users/parsosa/Downloads/syncnema/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 
 assert(html.includes('id="m3-desktop-header"'), 'index.html missing #m3-desktop-header');
 assert(html.includes('id="video-modal-trigger"'), 'Desktop header missing video trigger');
