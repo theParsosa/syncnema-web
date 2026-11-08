@@ -1164,3 +1164,42 @@ html, body {
 #player-viewport:has(#empty-state:not(.hidden)) .art-layer-lock {
     display: none !important;
 }
+
+/* Accessibility: visible keyboard focus */
+:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary, #67e8f9);
+    outline-offset: 2px;
+}
+button:focus:not(:focus-visible) { outline: none; }
+
+/* Connection toast */
+.ux-toast {
+    position: fixed;
+    inset-inline: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    margin-inline: auto;
+    width: fit-content;
+    max-width: calc(100vw - 32px);
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--md-sys-color-surface-container-high, #1e293b);
+    color: var(--md-sys-color-on-surface, #f1f5f9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.8125rem;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ux-toast.show { opacity: 1; transform: none; }
+
+/* Motion: respect user preference */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
