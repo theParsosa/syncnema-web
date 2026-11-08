@@ -142,7 +142,7 @@ function initSyncnemaApp() {
                 container: '#artplayer-container',
                 url: url || '',
                 theme: '#38bdf8',
-                volume: 0.8,
+                volume: (() => { try { const v = parseFloat(localStorage.getItem('syncnema_pref_volume')); return isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; } catch (e) { return 0.8; } })(),
                 isLive: false,
                 muted: false,
                 autoplay: false,
@@ -244,6 +244,35 @@ function initSyncnemaApp() {
                     configurable: true
                 });
             } catch (err) {}
+
+            // Remember volume (per device)
+            artInstance.on('video:volumechange', () => {
+                try { if (!artInstance.muted) localStorage.setItem('syncnema_pref_volume', String(artInstance.volume)); } catch (e) { /* storage unavailable */ }
+            });
+
+            // Double-tap left/right side of the video to seek -/+10s (touch only)
+            (() => {
+                const surface = artInstance.template && artInstance.template.$player;
+                if (!surface) return;
+                let lastTap = 0, lastSide = 0;
+                surface.addEventListener('pointerup', (e) => {
+                    if (e.pointerType !== 'touch') return;
+                    if (e.target.closest('.art-bottom, .art-controls, .art-settings, .art-layer-lock, button')) return;
+                    const rect = surface.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width;
+                    const side = x < 0.35 ? -1 : (x > 0.65 ? 1 : 0);
+                    const now = Date.now();
+                    if (side && side === lastSide && now - lastTap < 320) {
+                        const dur = artInstance.duration || 0;
+                        const t = Math.min(dur || Infinity, Math.max(0, artInstance.currentTime + side * 10));
+                        artInstance.currentTime = t;
+                        showToast(side > 0 ? '۱۰ ثانیه جلو' : '۱۰ ثانیه عقب', true);
+                        lastTap = 0; lastSide = 0;
+                        return;
+                    }
+                    lastTap = now; lastSide = side;
+                });
+            })();
 
             artInstance.on('fullscreen', (state) => {
                 if (state) {
@@ -1263,6 +1292,7 @@ function initSyncnemaApp() {
 
     function toggleSidebar(open) {
         isSidebarOpen = open;
+        try { localStorage.setItem('syncnema_pref_chat_open', open ? '1' : '0'); } catch (e) { /* storage unavailable */ }
         if (typeof syncChatSidebarStacking === 'function') {
             syncChatSidebarStacking();
         }
@@ -1289,6 +1319,10 @@ function initSyncnemaApp() {
         if (e && e.stopPropagation) e.stopPropagation();
         toggleSidebar(false);
     };
+    // Restore chat open state on desktop only (on phones it would cover the player)
+    try {
+        if (localStorage.getItem('syncnema_pref_chat_open') === '1' && window.matchMedia('(min-width: 768px)').matches) toggleSidebar(true);
+    } catch (e) { /* storage unavailable */ }
 
     // Smart scroll listener: reveals full history when scrolled up, restores top fade after scrolling back to bottom
     chatMsgs.addEventListener('scroll', () => {

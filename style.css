@@ -1203,3 +1203,10 @@ button:focus:not(:focus-visible) { outline: none; }
         scroll-behavior: auto !important;
     }
 }
+
+/* Keep the empty state clear of the open chat panel on desktop */
+@media (min-width: 768px) {
+    body:has(#chat-sidebar:not(.sidebar-closed)) #empty-state {
+        padding-inline-start: 400px;
+    }
+}
