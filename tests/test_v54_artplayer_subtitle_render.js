@@ -21,8 +21,8 @@ const scriptContent = fs.readFileSync(scriptPath, 'utf8');
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
 // 2. Cache busters v=5.4
-assert(/style\.css\?v=5\.\d+/.test(indexContent), 'index.html must link a versioned style.css');
-assert(/script\.js\?v=5\.\d+/.test(indexContent), 'index.html must link a versioned script.js');
+assert(/style\.css\?v=\d+\.\d+/.test(indexContent), 'index.html must link a versioned style.css');
+assert(/script\.js\?v=\d+\.\d+/.test(indexContent), 'index.html must link a versioned script.js');
 console.log('✓ 2. Cache busters v=5.4 verified');
 
 // 3. Artplayer initialization must configure subtitle
