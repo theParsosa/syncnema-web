@@ -1157,3 +1157,10 @@ html, body {
 
 
 
+
+/* Empty state: hide player loader/progress while no media is selected */
+#player-viewport:has(#empty-state:not(.hidden)) .art-loading,
+#player-viewport:has(#empty-state:not(.hidden)) .art-bottom .art-control-progress,
+#player-viewport:has(#empty-state:not(.hidden)) .art-layer-lock {
+    display: none !important;
+}

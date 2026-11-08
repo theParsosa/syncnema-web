@@ -340,7 +340,12 @@ function initSyncnemaApp() {
         }
     }
 
+    function hideEmptyState() { $('empty-state')?.classList.add('hidden'); }
+    $('empty-pick-btn')?.addEventListener('click', () => ($('video-modal-trigger') || $('m3-dock-video'))?.click());
+    $('empty-invite-btn')?.addEventListener('click', () => $('share-room-btn')?.click());
+
     function loadVideoSource(url, isHls = false) {
+        hideEmptyState();
         destroyHls();
         cleanupVideoBlob();
 
@@ -1041,9 +1046,16 @@ function initSyncnemaApp() {
     // Share Room Invite Link
     shareRoomBtn?.addEventListener('click', () => {
         const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoomId)}`;
+        if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+            navigator.share({ title: 'Syncnema', text: 'به اتاق تماشای من بپیوند', url: shareUrl }).catch((err) => {
+                if (err && err.name === 'AbortError') return;
+                navigator.clipboard?.writeText(shareUrl).then(() => showToast('لینک دعوت به اتاق کپی شد!', true)).catch(() => prompt('لینک اتاق را کپی کنید:', shareUrl));
+            });
+            return;
+        }
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(shareUrl).then(() => {
-                showToast('📋 لینک دعوت به اتاق کپی شد!', true);
+                showToast('لینک دعوت به اتاق کپی شد!', true);
             }).catch(() => {
                 prompt('لینک اتاق را کپی کنید:', shareUrl);
             });
@@ -1683,6 +1695,7 @@ function initSyncnemaApp() {
         videoPlayer.style.display = 'none';
         ytContainer.style.display = youtube ? 'block' : 'none';
         if (youtube) {
+            hideEmptyState();
             destroyHls();
             pausePlayer();
         } else if (ytPlayer?.pauseVideo) {
