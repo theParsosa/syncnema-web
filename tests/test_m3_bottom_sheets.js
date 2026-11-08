@@ -2,8 +2,8 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const html = fs.readFileSync('/Users/parsosa/Downloads/syncnema/index.html', 'utf8');
-const css = fs.readFileSync('/Users/parsosa/Downloads/syncnema/style.css', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const css = fs.readFileSync(require('path').join(__dirname, '..', 'style.css'), 'utf8');
 
 assert(html.includes('m3-bottom-sheet'), 'index.html missing m3-bottom-sheet classes');
 assert(css.includes('.m3-drag-handle'), 'style.css missing .m3-drag-handle');

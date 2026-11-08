@@ -2,8 +2,8 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const html = fs.readFileSync('/Users/parsosa/Downloads/syncnema/index.html', 'utf8');
-const script = fs.readFileSync('/Users/parsosa/Downloads/syncnema/script.js', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const script = fs.readFileSync(require('path').join(__dirname, '..', 'script.js'), 'utf8');
 
 assert(html.includes('id="m3-emoji-ribbon"'), 'Missing #m3-emoji-ribbon in index.html');
 assert(html.includes('class="m3-quick-emoji'), 'index.html missing .m3-quick-emoji buttons');

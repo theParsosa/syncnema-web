@@ -2,7 +2,7 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const html = fs.readFileSync('/Users/parsosa/Downloads/syncnema/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 
 assert(html.includes('id="m3-bottom-bar"'), 'index.html missing #m3-bottom-bar');
 assert(html.includes('id="m3-chat-fab"'), 'index.html missing #m3-chat-fab');

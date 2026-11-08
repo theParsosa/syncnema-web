@@ -9,9 +9,9 @@ const indexPath = path.join(__dirname, '..', 'index.html');
 const scriptPath = path.join(__dirname, '..', 'script.js');
 const stylePath = path.join(__dirname, '..', 'style.css');
 
-const indexHtml = fs.readFileSync(indexPath, 'utf8');
-const scriptJs = fs.readFileSync(scriptPath, 'utf8');
-const styleCss = fs.readFileSync(stylePath, 'utf8');
+const indexHtml = fs.readFileSync(indexPath, 'utf8').split(String.fromCharCode(13,10)).join(String.fromCharCode(10));
+const scriptJs = fs.readFileSync(scriptPath, 'utf8').split(String.fromCharCode(13,10)).join(String.fromCharCode(10));
+const styleCss = fs.readFileSync(stylePath, 'utf8').split(String.fromCharCode(13,10)).join(String.fromCharCode(10));
 
 // 1. Desktop Chat Stacking & Shadow Clearance
 assert(styleCss.includes('#player-viewport {\n    isolation: isolate'), 'style.css must isolate #player-viewport stacking context');
